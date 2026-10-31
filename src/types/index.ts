@@ -6,9 +6,16 @@ export type EventType =
   | 'college'
   | 'community'
   | 'family'
-  | 'corporate';
+  | 'corporate'
+  | 'custom';
 
-export type VenueType = 'function_hall' | 'home_courtyard';
+export type VenueType =
+  | 'function_hall'
+  | 'home_courtyard'
+  | 'outdoor_lawn'
+  | 'resort'
+  | 'campus_auditorium'
+  | 'conference_center';
 
 export type RSVPStatus = 'attending' | 'declined' | 'pending';
 
@@ -91,7 +98,11 @@ export type BudgetCategoryId =
   | 'photography'
   | 'styling'
   | 'invitations'
-  | 'transport';
+  | 'transport'
+  | 'entertainment'
+  | 'gifts'
+  | 'contingency'
+  | 'custom';
 
 export interface BudgetItem {
   id: string;
@@ -217,6 +228,130 @@ export interface WhatIfScenario {
   calculatedMetrics: WhatIfScenarioMetrics;
 }
 
+export type DecorAreaId =
+  | 'entrance'
+  | 'stage'
+  | 'seating'
+  | 'dining'
+  | 'tables'
+  | 'lighting'
+  | 'outdoor'
+  | 'complete_venue';
+
+export interface DecorConceptItem {
+  id: string;
+  area: DecorAreaId;
+  title: string;
+  description: string;
+  imageUrl: string;
+  prompt: string;
+  estimatedCost: number;
+  materials: string[];
+  affordableAlternative: string;
+  isFavorite?: boolean;
+  selectedForBudget?: boolean;
+}
+
+export interface VenuePhoto {
+  id: string;
+  name: string;
+  dataUrl: string;
+  uploadedAt: string;
+  notes?: string;
+}
+
+export interface StructuredEventProposal {
+  id: string;
+  eventType: EventType;
+  title: string;
+  tagline: string;
+  guestCount: number;
+  targetBudget: number;
+  city: string;
+  date: string;
+  // 12 Required Core Sections
+  overview: string;
+  requirements: string[];
+  venueArrangements: {
+    recommendedType: VenueType;
+    layoutConcept: string;
+    capacityPlanning: string;
+  };
+  guestPlanning: {
+    targetCount: number;
+    estimatedParties: number;
+    tableArrangements: string;
+  };
+  budgetBreakdown: Array<{
+    category: BudgetCategoryId;
+    categoryName: string;
+    amount: number;
+    percentage: number;
+    assumptions: string;
+  }>;
+  cateringRecommendations: {
+    mealType: string;
+    recommendedMenu: string[];
+    plateBuffer: number;
+    estimatedPerPlate: number;
+  };
+  decorConcepts: {
+    themeTitle: string;
+    palette: string[];
+    keyElements: string[];
+    lightingVibe: string;
+  };
+  returnGiftRecommendations?: {
+    description: string;
+    perUnitEstimate: number;
+    recommendedQuantity: number;
+  };
+  entertainmentRecommendations: string[];
+  timeline: Array<{
+    timeframe: string;
+    milestone: string;
+    tasks: string[];
+  }>;
+  importantTasks: Array<{
+    title: string;
+    priority: TaskPriority;
+    deadlineDaysBefore: number;
+    category: string;
+  }>;
+  risksAndContingencies: Array<{
+    risk: string;
+    mitigation: string;
+  }>;
+}
+
+export interface EventSummary {
+  id: string;
+  title: string;
+  eventType: EventType;
+  date: string;
+  time: string;
+  city: string;
+  venueName: string;
+  targetGuestCount: number;
+  targetBudget: number;
+  activeThemeId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CopilotActionType =
+  | 'APPLY_WHAT_IF'
+  | 'ADJUST_GUEST_COUNT'
+  | 'SWITCH_VENUE'
+  | 'UPDATE_BUDGET'
+  | 'APPLY_THEME'
+  | 'INCREASE_CATERING_BUFFER'
+  | 'CREATE_EVENT_FROM_PROPOSAL'
+  | 'UPDATE_EVENT_DETAILS'
+  | 'ADD_TASKS_BATCH'
+  | 'APPLY_BUDGET_ALLOCATION'
+  | 'APPLY_DECOR_CONCEPT';
+
 export interface CopilotProposal {
   id: string;
   title: string;
@@ -228,13 +363,7 @@ export interface CopilotProposal {
     to: string | number;
   }>;
   consequences: string[];
-  actionType:
-    | 'APPLY_WHAT_IF'
-    | 'ADJUST_GUEST_COUNT'
-    | 'SWITCH_VENUE'
-    | 'UPDATE_BUDGET'
-    | 'APPLY_THEME'
-    | 'INCREASE_CATERING_BUFFER';
+  actionType: CopilotActionType;
   actionPayload: any;
   status: 'pending' | 'applied' | 'rejected';
 }
@@ -245,4 +374,7 @@ export interface CopilotMessage {
   text: string;
   timestamp: string;
   proposal?: CopilotProposal;
+  structuredProposal?: StructuredEventProposal;
+  suggestedQuestions?: string[];
+  interviewStep?: string;
 }

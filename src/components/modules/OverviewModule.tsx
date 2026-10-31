@@ -26,9 +26,12 @@ export const OverviewModule: React.FC = () => {
     alerts,
     activeTheme,
     tasks,
+    isFirstTimeUser,
     setActiveModule,
     setIsWhatIfModalOpen,
     setIsCheckInScannerOpen,
+    setIsCreateEventModalOpen,
+    loadSampleWedding,
   } = useEvent();
 
   const attendingGuests = guests.filter((g) => g.rsvpStatus === 'attending');
@@ -45,6 +48,45 @@ export const OverviewModule: React.FC = () => {
 
   return (
     <div className="space-y-8 pb-12">
+      {/* New User Onboarding Banner */}
+      {isFirstTimeUser && (
+        <div className="rounded-3xl bg-gradient-to-r from-[#C96F4A] to-[#A8522F] text-white p-6 sm:p-8 shadow-festive flex flex-col md:flex-row md:items-center justify-between gap-6 animate-in slide-in-from-top-3 duration-300">
+          <div className="space-y-2 max-w-2xl">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-bold backdrop-blur-sm">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Welcome to Festora</span>
+            </div>
+            <h2 className="font-serif text-2xl sm:text-3xl font-bold">
+              Organize Any Event from First Idea to Celebration
+            </h2>
+            <p className="text-sm text-white/90 leading-relaxed font-light">
+              Plan weddings, birthdays, engagements, college fests, and corporate summits. Describe your celebration to the AI Copilot to get an instant 12-section master plan, or create your first workspace.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <button
+              onClick={() => setIsCreateEventModalOpen(true)}
+              className="px-5 py-2.5 rounded-xl bg-white text-[#C96F4A] text-xs font-bold shadow-md hover:bg-[#FFF8EF] active:scale-95 transition-all"
+            >
+              + Create First Event
+            </button>
+            <button
+              onClick={() => setActiveModule('copilot')}
+              className="px-5 py-2.5 rounded-xl bg-white/20 border border-white/40 text-white text-xs font-semibold hover:bg-white/30 active:scale-95 transition-all"
+            >
+              Describe to AI Copilot
+            </button>
+            <button
+              onClick={loadSampleWedding}
+              className="px-4 py-2.5 rounded-xl text-white/90 text-xs hover:underline"
+            >
+              Explore Sample Wedding Demo
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Hero Celebration Showcase */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#FFF] via-[#FAF0EB] to-[#F5D1BD]/50 border border-[#F5D1BD] p-6 sm:p-10 shadow-festive">
         {/* Background decorative patterns */}

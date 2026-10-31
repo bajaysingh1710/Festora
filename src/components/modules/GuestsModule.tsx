@@ -21,13 +21,17 @@ import { Guest, GuestCategory, RSVPStatus, MealPreference } from '../../types';
 
 export const GuestsModule: React.FC = () => {
   const {
+    event,
     guests,
     addGuest,
     updateGuest,
     deleteGuest,
+    importGuestsFromCSV,
+    exportGuestsToCSV,
     setSelectedGuestForPass,
     setIsCheckInScannerOpen,
     setActiveModule,
+    showToast,
   } = useEvent();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -95,7 +99,8 @@ export const GuestsModule: React.FC = () => {
     e.preventDefault();
     if (!newGuestName.trim()) return;
 
-    const guestCode = `FEST-AK-${Math.floor(100 + Math.random() * 900)}`;
+    const prefix = event.eventType.slice(0, 2).toUpperCase();
+    const guestCode = `FEST-${prefix}-${Math.floor(100 + Math.random() * 900)}`;
 
     addGuest({
       guestCode,
@@ -124,6 +129,31 @@ export const GuestsModule: React.FC = () => {
     setIsAddModalOpen(false);
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (text) {
+        importGuestsFromCSV(text);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleDownloadCSV = () => {
+    const csvContent = exportGuestsToCSV();
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${event.title.replace(/\s+/g, '_')}_Guests.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6 pb-12">
       {/* Top Header & Quick Action Buttons */}
@@ -141,17 +171,36 @@ export const GuestsModule: React.FC = () => {
         </div>
 
         <div className="flex items-center flex-wrap gap-2.5">
+          <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#EAE5E1] text-[#49372D] font-semibold text-xs hover:bg-[#FAF0EB] active:scale-95 transition-all shadow-sm">
+            <span>Import CSV</span>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+          </label>
+
+          {guests.length > 0 && (
+            <button
+              onClick={handleDownloadCSV}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#EAE5E1] text-[#49372D] font-semibold text-xs hover:bg-[#FAF0EB] active:scale-95 transition-all shadow-sm"
+            >
+              <span>Export CSV</span>
+            </button>
+          )}
+
           <button
             onClick={() => setIsCheckInScannerOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-[#C96F4A] text-[#C96F4A] font-semibold text-sm hover:bg-[#FAF0EB] active:scale-95 transition-all shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-[#C96F4A] text-[#C96F4A] font-semibold text-xs hover:bg-[#FAF0EB] active:scale-95 transition-all shadow-sm"
           >
             <QrCode className="w-4 h-4" />
-            <span>Open Check-In Terminal</span>
+            <span>Check-In Terminal</span>
           </button>
 
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C96F4A] text-white font-semibold text-sm hover:bg-[#A8522F] active:scale-95 transition-all shadow-festive"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C96F4A] text-white font-semibold text-xs hover:bg-[#A8522F] active:scale-95 transition-all shadow-festive"
           >
             <UserPlus className="w-4 h-4" />
             <span>Add Guest</span>

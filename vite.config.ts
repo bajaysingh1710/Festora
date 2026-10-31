@@ -7,6 +7,18 @@ export default defineConfig({
   server: {
     port: 3000,
     open: false,
-    host: true
-  }
+    host: true,
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          genai: ['@google/genai'],
+          ui: ['lucide-react', 'canvas-confetti', 'qrcode'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 800,
+  },
 });

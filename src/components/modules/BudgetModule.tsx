@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   Home,
   Info,
+  Gift,
+  ShieldAlert,
 } from 'lucide-react';
 import { useEvent } from '../../context/EventContext';
 import { BudgetCategoryId, BudgetItem, VenueType } from '../../types';
@@ -65,6 +67,12 @@ export const BudgetModule: React.FC = () => {
         return QrCode;
       case 'transport':
         return Car;
+      case 'entertainment':
+        return Sparkles;
+      case 'gifts':
+        return Gift;
+      case 'contingency':
+        return ShieldAlert;
       default:
         return Wallet;
     }

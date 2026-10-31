@@ -11,6 +11,9 @@ import { InvitationPreviewModule } from './components/modules/InvitationPreviewM
 import { WhatIfModal } from './components/modals/WhatIfModal';
 import { GuestPassModal } from './components/modals/GuestPassModal';
 import { CheckInScannerModal } from './components/modals/CheckInScannerModal';
+import { CreateEventModal } from './components/modals/CreateEventModal';
+import { EventSwitcherModal } from './components/modals/EventSwitcherModal';
+import { AISettingsModal } from './components/modals/AISettingsModal';
 import { Sparkles, CheckCircle, AlertTriangle, Info, Heart } from 'lucide-react';
 
 const MainAppContent: React.FC = () => {
@@ -68,6 +71,9 @@ const MainAppContent: React.FC = () => {
       <WhatIfModal />
       <GuestPassModal />
       <CheckInScannerModal />
+      <CreateEventModal />
+      <EventSwitcherModal />
+      <AISettingsModal />
 
       {/* Footer */}
       <footer className="mt-auto border-t border-[#F5D1BD]/70 bg-white/60 py-6 text-xs text-[#6E5548]">
