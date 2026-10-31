@@ -22,9 +22,11 @@ import {
 import { StorageService } from '../services/storageService';
 import { calculateBudgetSummary, BudgetSummary } from '../services/budgetCalculator';
 import { generateOperationalAlerts } from '../services/alertEngine';
-import { validateGuestCheckIn, CheckInResult } from '../services/guestPassService';
+import { validateGuestCheckIn, CheckInResult, generateGuestCode } from '../services/guestPassService';
 import { generateAllDecorConcepts } from '../services/imageGenService';
 import { getDefaultBudgetCategories, getDefaultEventSchedule } from '../services/eventDefaults';
+import { parseGuestsFromCsv, serializeGuestsToCsv } from '../lib/csvHelper';
+import { validateDataUrl } from '../lib/fileValidation';
 
 export interface EventContextType {
   // Multi-event State
@@ -417,12 +419,16 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Add venue photo
   const addVenuePhoto = (name: string, dataUrl: string, notes?: string) => {
+    if (!validateDataUrl(dataUrl)) {
+      showToast('Invalid photo format. Please upload a standard image file.', 'warning');
+      return;
+    }
     const newPhoto: VenuePhoto = {
       id: `photo-${Date.now()}`,
-      name,
+      name: name.slice(0, 100),
       dataUrl,
       uploadedAt: new Date().toISOString(),
-      notes,
+      notes: notes?.slice(0, 200),
     };
     setVenuePhotos((prev) => [newPhoto, ...prev]);
     showToast(`Uploaded venue reference photo: ${name}`);
@@ -594,51 +600,37 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // CSV Import & Export
   const importGuestsFromCSV = (csvText: string): number => {
     try {
-      const lines = csvText.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
-      if (lines.length <= 1) return 0;
+      const parsed = parseGuestsFromCsv(csvText);
+      if (parsed.length === 0) {
+        showToast('No valid guest records found in CSV.', 'warning');
+        return 0;
+      }
 
       let addedCount = 0;
-      const newGuests: Guest[] = [];
+      const newGuests: Guest[] = parsed.map((item, i) => {
+        const guestCode = generateGuestCode(event.eventType, 100 + guests.length + addedCount + 1);
+        addedCount++;
+        return {
+          id: `g-import-${Date.now()}-${i}`,
+          guestCode,
+          name: item.name,
+          email: item.email,
+          phone: item.phone,
+          category: item.category,
+          partySize: item.partySize,
+          rsvpStatus: 'attending',
+          mealPreference: item.mealPreference,
+          tableNumber: item.tableNumber,
+          notes: item.notes,
+          invitationSent: true,
+          invitationSentAt: new Date().toISOString(),
+          checkInStatus: 'not_checked_in',
+        };
+      });
 
-      for (let i = 1; i < lines.length; i++) {
-        const parts = lines[i].split(',').map((p) => p.trim().replace(/^"|"$/g, ''));
-        if (parts.length >= 2 && parts[0]) {
-          const name = parts[0];
-          const partySize = parseInt(parts[1], 10) || 2;
-          const phone = parts[2] || '+91 98000 00000';
-          const email = parts[3] || 'guest@example.com';
-          const category = (['family', 'close_friends', 'vip', 'colleagues', 'community'].includes(parts[4])
-            ? parts[4]
-            : 'family') as any;
-          const meal = (['vegetarian', 'non_vegetarian', 'jain', 'vegan'].includes(parts[5])
-            ? parts[5]
-            : 'vegetarian') as any;
-
-          const guestCode = `FEST-${event.eventType.slice(0, 2).toUpperCase()}-${100 + guests.length + addedCount + 1}`;
-
-          newGuests.push({
-            id: `g-import-${Date.now()}-${i}`,
-            guestCode,
-            name,
-            email,
-            phone,
-            category,
-            partySize,
-            rsvpStatus: 'attending',
-            mealPreference: meal,
-            invitationSent: true,
-            invitationSentAt: new Date().toISOString(),
-            checkInStatus: 'not_checked_in',
-          });
-          addedCount++;
-        }
-      }
-
-      if (newGuests.length > 0) {
-        setGuests((prev) => [...newGuests, ...prev]);
-        showToast(`Successfully imported ${newGuests.length} guests from CSV!`);
-      }
-      return addedCount;
+      setGuests((prev) => [...newGuests, ...prev]);
+      showToast(`Successfully imported ${newGuests.length} guests from CSV!`);
+      return newGuests.length;
     } catch {
       showToast('Failed to parse CSV file. Please check format.', 'warning');
       return 0;
@@ -646,14 +638,7 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const exportGuestsToCSV = (): string => {
-    const headers = 'Name,PartySize,Phone,Email,Category,MealPreference,RSVPStatus,GuestCode,CheckInStatus\n';
-    const rows = guests
-      .map(
-        (g) =>
-          `"${g.name}",${g.partySize},"${g.phone}","${g.email}","${g.category}","${g.mealPreference}","${g.rsvpStatus}","${g.guestCode}","${g.checkInStatus}"`
-      )
-      .join('\n');
-    return headers + rows;
+    return serializeGuestsToCsv(guests);
   };
 
   const checkInGuestByCode = (query: string, operatorName: string = 'Terminal 1'): CheckInResult => {

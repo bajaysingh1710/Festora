@@ -9,7 +9,7 @@
 [![Vite](https://img.shields.io/badge/Vite-6.0-646cff.svg?logo=vite)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38bdf8.svg?logo=tailwind-css)](https://tailwindcss.com/)
 [![Google Gemini](https://img.shields.io/badge/Google_Gemini-2.0_Flash-8E75B2.svg?logo=google)](https://aistudio.google.com/)
-[![Vitest](https://img.shields.io/badge/Tests-26_Passing-brightgreen.svg?logo=vitest)](https://vitest.dev/)
+[![Vitest](https://img.shields.io/badge/Tests-50_Passing-brightgreen.svg?logo=vitest)](https://vitest.dev/)
 [![License](https://img.shields.io/badge/License-Unspecified-lightgrey.svg)](#-17-contributing--license)
 
 **An AI-powered, multi-event celebration planning and management workspace.**  
@@ -331,7 +331,10 @@ d:/festora/
 │   ├── context/
 │   │   └── EventContext.tsx # Central state provider syncing state to storage
 │   ├── lib/
+│   │   ├── csvHelper.ts     # RFC-4180 CSV parser & formula injection defense
 │   │   ├── errors.ts        # Typed error hierarchy (AppError, ValidationError, etc.)
+│   │   ├── fileValidation.ts# Image MIME checking, size limits, SVG/HTML XSS blocking
+│   │   ├── formatters.ts    # Deterministic currency, date, time, and percentage formatters
 │   │   ├── logger.ts        # Severity-tagged structured console logging
 │   │   ├── sanitize.ts      # Prompt injection defenses and input sanitization
 │   │   └── seedData.ts      # Optional sample wedding demonstration data
@@ -352,10 +355,15 @@ d:/festora/
 │   │   ├── modules/
 │   │   │   ├── OverviewModule.tsx       # Celebration dashboard & quick vitals
 │   │   │   ├── CopilotModule.tsx        # AI interview & master proposal cards
+│   │   │   ├── copilot/                 # StructuredProposalCard & ActionDiffCard
 │   │   │   ├── ThemeModule.tsx          # 8-zone decoration designer & photo upload
+│   │   │   ├── theme/                   # VenuePhotoUploader, DecorConceptCard, CompareModal
 │   │   │   ├── BudgetModule.tsx         # Expense table, auto-balance & categories
+│   │   │   ├── budget/                  # BudgetOverviewCard, Allocations, ItemTable, Modals
 │   │   │   ├── GuestsModule.tsx         # Guest directory, seating chart & CSV tools
+│   │   │   ├── guests/                  # GuestStatsCards, DirectoryTable, SeatingPlan, AddModal
 │   │   │   ├── AdminModule.tsx          # Hourly timeline, fair billing & weather
+│   │   │   ├── admin/                   # VitalsCards, FairBillingAudit, WeatherAdvisory, Timeline
 │   │   │   └── InvitationPreviewModule.tsx # Multi-style invitations & AI copywriter
 │   │   └── modals/
 │   │       ├── AISettingsModal.tsx      # In-app Gemini API key & model settings
@@ -453,7 +461,23 @@ npm test
 npm run typecheck
 ```
 
-### Test Suite Summary (26 Tests Across 5 Test Files)
+### Test Suite Summary (50 Tests Across 8 Test Files)
+- `src/__tests__/formatters.test.ts` (11 tests):
+  - Deterministic Indian Rupee currency formatting with compact notation (`k`, `L`, `Cr`)
+  - Safe handling of negative numbers, zero, `NaN`, and `null`
+  - Flexible date formatting (full, medium, short) with fallback for invalid dates
+  - 24-hour to 12-hour AM/PM time conversions and percentage formatting
+- `src/__tests__/csvHelper.test.ts` (9 tests):
+  - RFC-4180 compliant CSV line parsing with commas inside quoted fields
+  - Escaped double quotes inside quoted strings
+  - **CSV Formula Injection defense** (neutralizing leading `=`, `+`, `-`, `@` characters)
+  - Guest CSV row parsing with domain sanitization and boundary clamping (1-50 guests)
+  - Safe guest list serialization
+- `src/__tests__/fileValidation.test.ts` (4 tests):
+  - Allowed image MIME-type checking (JPEG, PNG, WebP)
+  - **Stored XSS defense**: strictly rejecting vector SVG and HTML payloads
+  - File size threshold enforcement (max 5 MB)
+  - Data URL regex validation
 - `src/__tests__/budgetCalculator.test.ts` (4 tests):
   - Fixed cost calculation invariance against guest headcount
   - Dynamic scaling of guest-dependent catering and party favors

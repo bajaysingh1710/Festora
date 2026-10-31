@@ -11,6 +11,17 @@ export interface CheckInResult {
 }
 
 /**
+ * Generates a standardized, deterministic alphanumeric guest pass identifier.
+ * Format: FEST-{EVENT_PREFIX}-{SEQUENCE_NUMBER}
+ * e.g., FEST-BD-101 for Birthday, FEST-WE-102 for Wedding
+ */
+export function generateGuestCode(eventType: string, sequenceNumber: number): string {
+  const prefix = (eventType || 'EV').slice(0, 2).toUpperCase();
+  const num = Math.max(100, Math.floor(sequenceNumber));
+  return `FEST-${prefix}-${num}`;
+}
+
+/**
  * Creates standardized QR payload string for a guest pass
  */
 export function createQrPayload(guest: Guest, eventId: string): string {

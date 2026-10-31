@@ -363,6 +363,15 @@ export type CopilotActionType =
   | 'APPLY_BUDGET_ALLOCATION'
   | 'APPLY_DECOR_CONCEPT';
 
+export interface CopilotActionPayload {
+  venueType?: VenueType;
+  extraPlates?: number;
+  themeId?: string;
+  guestCount?: number;
+  targetBudget?: number;
+  [key: string]: unknown;
+}
+
 export interface CopilotProposal {
   id: string;
   title: string;
@@ -375,7 +384,7 @@ export interface CopilotProposal {
   }>;
   consequences: string[];
   actionType: CopilotActionType;
-  actionPayload: any;
+  actionPayload: CopilotActionPayload;
   status: 'pending' | 'applied' | 'rejected';
 }
 

@@ -1,27 +1,14 @@
-import React, { useState } from 'react';
-import {
-  Wallet,
-  Building,
-  UtensilsCrossed,
-  Sparkles,
-  Camera,
-  Shirt,
-  QrCode,
-  Car,
-  Plus,
-  Trash2,
-  Edit2,
-  Sliders,
-  AlertCircle,
-  CheckCircle2,
-  Home,
-  Info,
-  Gift,
-  ShieldAlert,
-} from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Sparkles, Plus, Sliders, Building, Home } from 'lucide-react';
 import { useEvent } from '../../context/EventContext';
-import { BudgetCategoryId, BudgetItem, VenueType } from '../../types';
+import { BudgetCategoryId, BudgetItem } from '../../types';
 import { calculateItemCost } from '../../services/budgetCalculator';
+import { BudgetOverviewCard } from './budget/BudgetOverviewCard';
+import { CategoryAllocationList } from './budget/CategoryAllocationList';
+import { BudgetItemTable } from './budget/BudgetItemTable';
+import { AddBudgetItemModal } from './budget/AddBudgetItemModal';
+import { EditBudgetItemModal } from './budget/EditBudgetItemModal';
+import { AddCategoryModal } from './budget/AddCategoryModal';
 
 export const BudgetModule: React.FC = () => {
   const {
@@ -37,30 +24,16 @@ export const BudgetModule: React.FC = () => {
     addBudgetCategory,
     autoBalanceBudgetCategories,
     setIsWhatIfModalOpen,
-    showToast,
   } = useEvent();
 
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('all');
   const [editingItem, setEditingItem] = useState<{ categoryId: BudgetCategoryId; item: BudgetItem } | null>(null);
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [addCategoryId, setAddCategoryId] = useState<BudgetCategoryId>('catering');
-
-  // Custom Category Modal State
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [newCategoryPercent, setNewCategoryPercent] = useState(10);
-
-  // New Item State
-  const [newItemName, setNewItemName] = useState('');
-  const [newItemDesc, setNewItemDesc] = useState('');
-  const [newItemUnitCost, setNewItemUnitCost] = useState<number>(500);
-  const [newItemQuantity, setNewItemQuantity] = useState<number>(1);
-  const [newItemIsGuestDependent, setNewItemIsGuestDependent] = useState(false);
-  const [newItemGuestMultiplier, setNewItemGuestMultiplier] = useState<number>(1.0);
-  const [newItemCommitted, setNewItemCommitted] = useState<number>(0);
 
   // Fixed vs Variable (Guest-Dependent) Breakdown
-  const { fixedTotal, variableTotal } = React.useMemo(() => {
+  const { fixedTotal, variableTotal } = useMemo(() => {
     let fixed = 0;
     let variable = 0;
     budgetCategories.forEach((cat) => {
@@ -76,76 +49,6 @@ export const BudgetModule: React.FC = () => {
     return { fixedTotal: fixed, variableTotal: variable };
   }, [budgetCategories, event.targetGuestCount, event.venue.type]);
 
-  const getCategoryIcon = (id: BudgetCategoryId) => {
-    switch (id) {
-      case 'venue':
-        return Building;
-      case 'catering':
-        return UtensilsCrossed;
-      case 'decor':
-        return Sparkles;
-      case 'photography':
-        return Camera;
-      case 'styling':
-        return Shirt;
-      case 'invitations':
-        return QrCode;
-      case 'transport':
-        return Car;
-      case 'entertainment':
-        return Sparkles;
-      case 'gifts':
-        return Gift;
-      case 'contingency':
-        return ShieldAlert;
-      default:
-        return Wallet;
-    }
-  };
-
-  const handleSaveEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingItem) return;
-
-    updateBudgetItem(editingItem.categoryId, editingItem.item.id, {
-      name: editingItem.item.name,
-      description: editingItem.item.description,
-      unitCost: Number(editingItem.item.unitCost),
-      quantity: Number(editingItem.item.quantity),
-      committedAmount: Number(editingItem.item.committedAmount),
-      isGuestDependent: editingItem.item.isGuestDependent,
-      guestMultiplier: Number(editingItem.item.guestMultiplier),
-    });
-
-    setEditingItem(null);
-  };
-
-  const handleCreateItem = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newItemName.trim()) return;
-
-    addBudgetItem(addCategoryId, {
-      categoryId: addCategoryId,
-      name: newItemName.trim(),
-      description: newItemDesc.trim() || undefined,
-      unitCost: Number(newItemUnitCost),
-      quantity: Number(newItemQuantity),
-      isGuestDependent: newItemIsGuestDependent,
-      guestMultiplier: Number(newItemGuestMultiplier),
-      committedAmount: Number(newItemCommitted),
-      estimatedTotal: Number(newItemUnitCost) * Number(newItemQuantity),
-    });
-
-    // Reset Form
-    setNewItemName('');
-    setNewItemDesc('');
-    setNewItemUnitCost(500);
-    setNewItemQuantity(1);
-    setNewItemIsGuestDependent(false);
-    setNewItemCommitted(0);
-    setIsAddItemOpen(false);
-  };
-
   return (
     <div className="space-y-6 pb-12">
       {/* Top Header */}
@@ -158,7 +61,7 @@ export const BudgetModule: React.FC = () => {
             Smart Budget Planner
           </h1>
           <p className="text-sm text-[#6E5548] mt-0.5">
-            Transparent cost modeling across 7 categories. Fixed and guest-dependent estimates automatically sync.
+            Transparent cost modeling across categories. Fixed and guest-dependent estimates automatically sync.
           </p>
         </div>
 
@@ -199,163 +102,13 @@ export const BudgetModule: React.FC = () => {
       </div>
 
       {/* Main Financial Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Target Budget Card */}
-        <div className="rounded-2xl bg-white p-5 border border-[#EAE5E1] shadow-card">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#6E5548]">
-            Target Budget Cap
-          </p>
-          <div className="mt-1 flex items-baseline justify-between">
-            <span className="font-serif text-2xl font-bold text-[#49372D]">
-              ₹{event.targetBudget.toLocaleString('en-IN')}
-            </span>
-            <input
-              type="number"
-              step="10000"
-              value={event.targetBudget}
-              onChange={(e) => updateEvent({ targetBudget: Number(e.target.value) })}
-              className="w-24 text-right text-xs font-mono px-2 py-1 rounded border border-[#EAE5E1] text-[#6E5548] focus:outline-none"
-              title="Click to adjust target cap"
-            />
-          </div>
-          <p className="text-xs text-[#6E5548] mt-1">Set overall financial threshold</p>
-        </div>
-
-        {/* Estimated Expenses Card */}
-        <div className="rounded-2xl bg-white p-5 border border-[#EAE5E1] shadow-card">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#6E5548]">
-            Total Estimated
-          </p>
-          <div className="mt-1 flex items-baseline justify-between">
-            <span className="font-serif text-2xl font-bold text-[#C96F4A]">
-              ₹{budgetSummary.totalEstimated.toLocaleString('en-IN')}
-            </span>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#FAF0EB] text-[#C96F4A]">
-              {budgetSummary.percentSpent.toFixed(0)}% Allocated
-            </span>
-          </div>
-          <div className="mt-2 w-full bg-stone-100 rounded-full h-2 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-300 ${
-                budgetSummary.isOverBudget ? 'bg-red-500' : 'bg-[#C96F4A]'
-              }`}
-              style={{ width: `${Math.min(100, budgetSummary.percentSpent)}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Committed / Paid Deposit Card */}
-        <div className="rounded-2xl bg-white p-5 border border-[#EAE5E1] shadow-card">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#6E5548]">
-            Committed / Paid
-          </p>
-          <div className="mt-1 flex items-baseline justify-between">
-            <span className="font-serif text-2xl font-bold text-emerald-800">
-              ₹{budgetSummary.totalCommitted.toLocaleString('en-IN')}
-            </span>
-            <span className="text-xs text-[#6E5548]">
-              {((budgetSummary.totalCommitted / budgetSummary.totalEstimated) * 100).toFixed(0)}% secured
-            </span>
-          </div>
-          <p className="text-xs text-[#6E5548] mt-1">Down-payments & vendor advances</p>
-        </div>
-
-        {/* Remaining Surplus or Overrun Card */}
-        <div
-          className={`rounded-2xl p-5 border shadow-card ${
-            budgetSummary.isOverBudget
-              ? 'bg-red-50 border-red-200 text-red-900'
-              : 'bg-[#F2F6F0] border-[#A9B89A]/50 text-emerald-900'
-          }`}
-        >
-          <p className="text-xs font-semibold uppercase tracking-wider opacity-80">
-            {budgetSummary.isOverBudget ? 'Budget Overrun Deficit' : 'Remaining Budget Surplus'}
-          </p>
-          <div className="mt-1 flex items-baseline justify-between">
-            <span className="font-serif text-2xl font-bold">
-              ₹{Math.abs(budgetSummary.remainingBudget).toLocaleString('en-IN')}
-            </span>
-            <span
-              className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                budgetSummary.isOverBudget ? 'bg-red-200 text-red-800' : 'bg-emerald-200 text-emerald-800'
-              }`}
-            >
-              {budgetSummary.isOverBudget ? 'Over Budget' : 'Within Budget'}
-            </span>
-          </div>
-          <p className="text-xs opacity-80 mt-1">
-            {budgetSummary.isOverBudget
-              ? 'Trim guest count or decor to rebalance'
-              : 'Surplus available for contingency or upgrades'}
-          </p>
-        </div>
-      </div>
-
-      {/* Fixed vs Variable & Emergency Buffer Card */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Fixed vs Guest-Dependent Variable */}
-        <div className="rounded-2xl bg-white p-5 border border-[#EAE5E1] shadow-card flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#6E5548]">
-                Cost Structure: Fixed vs. Variable
-              </span>
-              <span className="text-xs font-semibold text-[#C96F4A]">
-                ≈ ₹{Math.round(variableTotal / Math.max(1, event.targetGuestCount)).toLocaleString('en-IN')}/guest
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-xl bg-[#FFF8EF] border border-[#F5D1BD]">
-                <p className="text-[11px] text-[#6E5548] font-semibold">Fixed Costs (Venue, Photo, Audio)</p>
-                <p className="font-serif text-lg font-bold text-[#49372D] mt-0.5">₹{fixedTotal.toLocaleString('en-IN')}</p>
-                <p className="text-[10px] text-[#6E5548]">{((fixedTotal / Math.max(1, budgetSummary.totalEstimated)) * 100).toFixed(0)}% of total</p>
-              </div>
-              <div className="p-3 rounded-xl bg-[#FAF0EB] border border-[#F5D1BD]">
-                <p className="text-[11px] text-[#C96F4A] font-semibold">Variable Costs (Buffet, Gifts)</p>
-                <p className="font-serif text-lg font-bold text-[#C96F4A] mt-0.5">₹{variableTotal.toLocaleString('en-IN')}</p>
-                <p className="text-[10px] text-[#C96F4A]">{((variableTotal / Math.max(1, budgetSummary.totalEstimated)) * 100).toFixed(0)}% of total</p>
-              </div>
-            </div>
-          </div>
-          <p className="text-[11px] text-[#6E5548] mt-3">
-            Fixed costs remain stable regardless of attendance, while variable costs scale with each arriving guest.
-          </p>
-        </div>
-
-        {/* Emergency Contingency Buffer */}
-        <div className="rounded-2xl bg-white p-5 border border-[#EAE5E1] shadow-card flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#6E5548] flex items-center gap-1.5">
-                <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-                <span>Emergency Buffer Reserve</span>
-              </span>
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                Recommended 8%
-              </span>
-            </div>
-            <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80">
-              <div className="flex items-baseline justify-between">
-                <span className="font-serif text-lg font-bold text-amber-900">
-                  ₹{Math.round(event.targetBudget * 0.08).toLocaleString('en-IN')}
-                </span>
-                <span className="text-xs text-amber-800 font-semibold">
-                  {budgetSummary.isOverBudget ? '⚠️ Buffer Absorbed by Deficit' : '✅ Buffer Fully Intact'}
-                </span>
-              </div>
-              <p className="text-[11px] text-amber-900 mt-1">
-                Safeguards your celebration against unexpected guest party expansions, overtime sound fees, or weather canopies.
-              </p>
-            </div>
-          </div>
-          <div className="mt-3 flex items-center justify-between text-xs">
-            <span className="text-[#6E5548]">Surplus Safety Margin:</span>
-            <span className="font-bold text-[#49372D]">
-              {budgetSummary.isOverBudget ? 'None (Overrun)' : `₹${budgetSummary.remainingBudget.toLocaleString('en-IN')} available`}
-            </span>
-          </div>
-        </div>
-      </div>
+      <BudgetOverviewCard
+        targetBudget={event.targetBudget}
+        budgetSummary={budgetSummary}
+        fixedTotal={fixedTotal}
+        variableTotal={variableTotal}
+        onUpdateTargetBudget={(target) => updateEvent({ targetBudget: target })}
+      />
 
       {/* Interactive Controls Bar: Real-time Guest Count Scaling & Venue Type Toggle */}
       <div className="rounded-2xl bg-gradient-to-r from-[#FAF0EB] to-[#FFF8EF] border border-[#F5D1BD] p-5 shadow-card">
@@ -415,444 +168,55 @@ export const BudgetModule: React.FC = () => {
                 }`}
               >
                 <Home className="w-3.5 h-3.5" />
-                <span>Home Courtyard (Saves ₹175k)</span>
+                <span>Home Courtyard (Waives Hall Rental)</span>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Category Breakdown & Navigation Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
-        <button
-          onClick={() => setActiveCategoryFilter('all')}
-          className={`px-3.5 py-2 rounded-xl font-semibold capitalize transition-all ${
-            activeCategoryFilter === 'all'
-              ? 'bg-[#49372D] text-white shadow-sm'
-              : 'bg-white border border-[#EAE5E1] text-[#6E5548] hover:bg-[#FAF0EB]'
-          }`}
-        >
-          All 7 Categories
-        </button>
-
-        {budgetCategories.map((cat) => {
-          const summary = budgetSummary.categoryTotals[cat.id];
-          const Icon = getCategoryIcon(cat.id);
-          const isSelected = activeCategoryFilter === cat.id;
-
-          return (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategoryFilter(cat.id)}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl font-medium transition-all ${
-                isSelected
-                  ? 'bg-[#C96F4A] text-white font-semibold shadow-sm'
-                  : 'bg-white border border-[#EAE5E1] text-[#49372D] hover:bg-[#FAF0EB]'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5 shrink-0" />
-              <span>{cat.name}</span>
-              <span className={`text-[11px] opacity-80 ${isSelected ? 'text-white' : 'text-[#6E5548]'}`}>
-                (₹{Math.round((summary?.estimatedTotal || 0) / 1000)}k)
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Category Allocation Quick Tiles */}
+      <CategoryAllocationList
+        categories={budgetCategories}
+        budgetSummary={budgetSummary}
+        targetBudget={event.targetBudget}
+        activeFilter={activeCategoryFilter}
+        onSelectFilter={setActiveCategoryFilter}
+      />
 
       {/* Category Line Items Matrix */}
-      <div className="space-y-4">
-        {budgetCategories
-          .filter((cat) => activeCategoryFilter === 'all' || activeCategoryFilter === cat.id)
-          .map((cat) => {
-            const summary = budgetSummary.categoryTotals[cat.id];
-            const Icon = getCategoryIcon(cat.id);
-
-            return (
-              <div
-                key={cat.id}
-                className="rounded-2xl bg-white border border-[#EAE5E1] shadow-card overflow-hidden"
-              >
-                {/* Category Header */}
-                <div className="bg-[#FAF0EB]/60 px-5 py-3.5 border-b border-[#EAE5E1] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <span
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white"
-                      style={{ backgroundColor: cat.color }}
-                    >
-                      <Icon className="w-4 h-4" />
-                    </span>
-                    <div>
-                      <h3 className="font-serif font-bold text-base text-[#49372D]">{cat.name}</h3>
-                      <p className="text-xs text-[#6E5548]">
-                        Target share: {cat.targetPercent}% · Actual: {summary?.percentageOfTotal.toFixed(1)}%
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4 text-xs">
-                    <div>
-                      <span className="text-[#6E5548]">Estimated Total:</span>{' '}
-                      <span className="font-bold text-sm text-[#49372D]">
-                        ₹{summary?.estimatedTotal.toLocaleString('en-IN')}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[#6E5548]">Committed:</span>{' '}
-                      <span className="font-semibold text-emerald-800">
-                        ₹{summary?.committedTotal.toLocaleString('en-IN')}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Items Table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-[#49372D]">
-                    <thead className="text-[11px] uppercase tracking-wider text-[#6E5548] border-b border-[#EAE5E1]/60">
-                      <tr>
-                        <th className="py-2.5 px-4 font-semibold">Expense Item</th>
-                        <th className="py-2.5 px-4 font-semibold">Unit Rate</th>
-                        <th className="py-2.5 px-4 font-semibold">Quantity / Scaling</th>
-                        <th className="py-2.5 px-4 font-semibold">Calculation Basis</th>
-                        <th className="py-2.5 px-4 font-semibold">Committed</th>
-                        <th className="py-2.5 px-4 font-semibold">Estimated Total</th>
-                        <th className="py-2.5 px-4 font-semibold text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#EAE5E1]/50 text-xs">
-                      {cat.items.map((item) => {
-                        const { estimatedTotal, calculationExplanation } = calculateItemCost(
-                          item,
-                          event.targetGuestCount,
-                          event.venue.type
-                        );
-
-                        return (
-                          <tr key={item.id} className="hover:bg-[#FFF8EF]/50 transition-colors">
-                            <td className="py-3 px-4 font-medium text-[#49372D]">
-                              <div>{item.name}</div>
-                              {item.description && (
-                                <div className="text-[11px] text-[#6E5548] mt-0.5">{item.description}</div>
-                              )}
-                            </td>
-
-                            <td className="py-3 px-4 font-mono font-medium">
-                              ₹{item.unitCost.toLocaleString('en-IN')}
-                            </td>
-
-                            <td className="py-3 px-4">
-                              <span className="font-semibold">
-                                {item.isGuestDependent
-                                  ? Math.max(1, Math.round(event.targetGuestCount * item.guestMultiplier))
-                                  : item.quantity}
-                              </span>
-                              {item.isGuestDependent && (
-                                <span className="ml-1 text-[10px] text-[#C96F4A] font-semibold bg-[#FAF0EB] px-1.5 py-0.5 rounded">
-                                  Guest Scaled
-                                </span>
-                              )}
-                            </td>
-
-                            <td className="py-3 px-4 text-[#6E5548]">
-                              {calculationExplanation}
-                            </td>
-
-                            <td className="py-3 px-4 font-semibold text-emerald-800">
-                              ₹{item.committedAmount.toLocaleString('en-IN')}
-                            </td>
-
-                            <td className="py-3 px-4 font-bold text-sm text-[#49372D]">
-                              ₹{estimatedTotal.toLocaleString('en-IN')}
-                            </td>
-
-                            <td className="py-3 px-4 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                <button
-                                  onClick={() => setEditingItem({ categoryId: cat.id, item })}
-                                  className="p-1 rounded text-[#6E5548] hover:text-[#C96F4A] hover:bg-[#FAF0EB]"
-                                  title="Edit line item"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => deleteBudgetItem(cat.id, item.id)}
-                                  className="p-1 rounded text-stone-400 hover:text-red-600 hover:bg-red-50"
-                                  title="Delete item"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            );
-          })}
-      </div>
+      <BudgetItemTable
+        categories={budgetCategories}
+        budgetSummary={budgetSummary}
+        targetGuestCount={event.targetGuestCount}
+        venueType={event.venue.type}
+        activeFilter={activeCategoryFilter}
+        onEditItem={(categoryId, item) => setEditingItem({ categoryId, item })}
+        onDeleteItem={deleteBudgetItem}
+      />
 
       {/* Edit Item Modal */}
-      {editingItem && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-festive-lg border border-[#F5D1BD]">
-            <h2 className="font-serif text-xl font-bold text-[#49372D] mb-4">Edit Expense Item</h2>
-            <form onSubmit={handleSaveEdit} className="space-y-4 text-sm text-[#49372D]">
-              <div>
-                <label className="block text-xs font-semibold text-[#6E5548] uppercase mb-1">
-                  Item Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editingItem.item.name}
-                  onChange={(e) =>
-                    setEditingItem({
-                      ...editingItem,
-                      item: { ...editingItem.item, name: e.target.value },
-                    })
-                  }
-                  className="w-full px-3 py-2 rounded-xl border border-[#EAE5E1] focus:outline-none focus:border-[#C96F4A]"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[#6E5548] uppercase mb-1">
-                    Unit Cost (₹)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editingItem.item.unitCost}
-                    onChange={(e) =>
-                      setEditingItem({
-                        ...editingItem,
-                        item: { ...editingItem.item, unitCost: Number(e.target.value) },
-                      })
-                    }
-                    className="w-full px-3 py-2 rounded-xl border border-[#EAE5E1] focus:outline-none focus:border-[#C96F4A]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#6E5548] uppercase mb-1">
-                    Committed / Paid (₹)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editingItem.item.committedAmount}
-                    onChange={(e) =>
-                      setEditingItem({
-                        ...editingItem,
-                        item: { ...editingItem.item, committedAmount: Number(e.target.value) },
-                      })
-                    }
-                    className="w-full px-3 py-2 rounded-xl border border-[#EAE5E1] focus:outline-none focus:border-[#C96F4A]"
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 bg-[#FAF0EB]/60 rounded-xl border border-[#F5D1BD] flex items-center justify-between text-xs">
-                <div>
-                  <span className="font-semibold block text-[#49372D]">Scale with Guest Count?</span>
-                  <span className="text-[#6E5548]">Automatically scale quantity as guests change</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={editingItem.item.isGuestDependent}
-                  onChange={(e) =>
-                    setEditingItem({
-                      ...editingItem,
-                      item: { ...editingItem.item, isGuestDependent: e.target.checked },
-                    })
-                  }
-                  className="w-4 h-4 accent-[#C96F4A]"
-                />
-              </div>
-
-              <div className="mt-6 pt-4 border-t border-[#EAE5E1] flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setEditingItem(null)}
-                  className="px-4 py-2 rounded-xl border border-[#EAE5E1] text-[#6E5548] font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#C96F4A] text-white font-semibold shadow-festive hover:bg-[#A8522F]"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <EditBudgetItemModal
+        editingItem={editingItem}
+        onClose={() => setEditingItem(null)}
+        onSave={updateBudgetItem}
+      />
 
       {/* Add Custom Category Modal */}
-      {isAddCategoryOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-festive-lg border border-[#F5D1BD]">
-            <h2 className="font-serif text-xl font-bold text-[#49372D] mb-4">Create Custom Category</h2>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!newCategoryName.trim()) return;
-                addBudgetCategory(newCategoryName.trim(), Number(newCategoryPercent));
-                setNewCategoryName('');
-                setIsAddCategoryOpen(false);
-              }}
-              className="space-y-4 text-sm text-[#49372D]"
-            >
-              <div>
-                <label className="block text-xs font-semibold text-[#6E5548] uppercase mb-1">
-                  Category Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder="e.g. Celebrity Artist & Performance"
-                  className="w-full px-3 py-2 rounded-xl border border-[#EAE5E1] focus:outline-none focus:border-[#C96F4A]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#6E5548] uppercase mb-1">
-                  Target Allocation (% of Budget)
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="50"
-                  value={newCategoryPercent}
-                  onChange={(e) => setNewCategoryPercent(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl border border-[#EAE5E1] focus:outline-none focus:border-[#C96F4A]"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#EAE5E1]">
-                <button
-                  type="button"
-                  onClick={() => setIsAddCategoryOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-[#EAE5E1] text-[#6E5548] font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#C96F4A] text-white font-semibold shadow-festive hover:bg-[#A8522F]"
-                >
-                  Create Category
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddCategoryModal
+        isOpen={isAddCategoryOpen}
+        onClose={() => setIsAddCategoryOpen(false)}
+        onAdd={addBudgetCategory}
+      />
 
       {/* Add New Item Modal */}
-      {isAddItemOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-festive-lg border border-[#F5D1BD]">
-            <h2 className="font-serif text-xl font-bold text-[#49372D] mb-4">Add Expense Item</h2>
-            <form onSubmit={handleCreateItem} className="space-y-4 text-sm text-[#49372D]">
-              <div>
-                <label className="block text-xs font-semibold text-[#6E5548] uppercase mb-1">
-                  Budget Category
-                </label>
-                <select
-                  value={addCategoryId}
-                  onChange={(e) => setAddCategoryId(e.target.value as BudgetCategoryId)}
-                  className="w-full px-3 py-2 rounded-xl border border-[#EAE5E1] focus:outline-none focus:border-[#C96F4A]"
-                >
-                  {budgetCategories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#6E5548] uppercase mb-1">
-                  Item Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newItemName}
-                  onChange={(e) => setNewItemName(e.target.value)}
-                  placeholder="e.g. Live Saxophone Soloist"
-                  className="w-full px-3 py-2 rounded-xl border border-[#EAE5E1] focus:outline-none focus:border-[#C96F4A]"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[#6E5548] uppercase mb-1">
-                    Unit Cost (₹)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={newItemUnitCost}
-                    onChange={(e) => setNewItemUnitCost(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-[#EAE5E1] focus:outline-none focus:border-[#C96F4A]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#6E5548] uppercase mb-1">
-                    Quantity
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={newItemQuantity}
-                    onChange={(e) => setNewItemQuantity(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-[#EAE5E1] focus:outline-none focus:border-[#C96F4A]"
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 bg-[#FAF0EB]/60 rounded-xl border border-[#F5D1BD] flex items-center justify-between text-xs">
-                <div>
-                  <span className="font-semibold block text-[#49372D]">Guest Dependent?</span>
-                  <span className="text-[#6E5548]">Quantity links to total guests (e.g. food plates)</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={newItemIsGuestDependent}
-                  onChange={(e) => setNewItemIsGuestDependent(e.target.checked)}
-                  className="w-4 h-4 accent-[#C96F4A]"
-                />
-              </div>
-
-              <div className="mt-6 pt-4 border-t border-[#EAE5E1] flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsAddItemOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-[#EAE5E1] text-[#6E5548] font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#C96F4A] text-white font-semibold shadow-festive hover:bg-[#A8522F]"
-                >
-                  Add Line Item
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddBudgetItemModal
+        categories={budgetCategories}
+        defaultCategoryId={addCategoryId}
+        isOpen={isAddItemOpen}
+        onClose={() => setIsAddItemOpen(false)}
+        onAdd={addBudgetItem}
+      />
     </div>
   );
 };

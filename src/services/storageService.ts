@@ -394,7 +394,7 @@ export class StorageService {
   // --- AI Settings (Gemini API key & model) ---
   static getAISettings(): { apiKey: string; model: string } {
     try {
-      const envKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
+      const envKey = import.meta.env.VITE_GEMINI_API_KEY || '';
       const data = localStorage.getItem(GLOBAL_KEYS.AI_SETTINGS);
       if (data) {
         const parsed = JSON.parse(data);
