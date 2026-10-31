@@ -77,6 +77,81 @@ export function constructImageUrl(prompt: string, seed: number): string {
   return `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=680&seed=${seed}&nologo=true&model=flux`;
 }
 
+export function generateSingleAreaConcept(
+  area: DecorAreaId,
+  options: GenerateDecorOptions,
+  variationIndex: number = 0
+): DecorConceptItem {
+  const { eventType, theme, targetBudget, guestCount } = options;
+  const decorBudgetTotal = Math.round(targetBudget * 0.2);
+  const prompt = buildImagePrompt(area, options);
+  const seed = Math.floor(Math.random() * 899999) + 100000 + variationIndex * 1337;
+  const imageUrl = constructImageUrl(prompt, seed);
+  const areaInfo = DECOR_AREAS.find((a) => a.id === area) || DECOR_AREAS[0];
+
+  let estimatedCost = Math.round(decorBudgetTotal * 0.12);
+  let materials: string[] = [];
+  let affordableAlternative = '';
+
+  switch (area) {
+    case 'entrance':
+      estimatedCost = Math.round(decorBudgetTotal * 0.18);
+      materials = ['Custom wooden archway', 'Wholesale fresh marigolds / carnations', 'Brass lanterns', 'Printed welcome vinyl easel'];
+      affordableAlternative = 'Replace structural wooden arch with reusable wrought-iron frame and potted seasonal plants (saves ~30%)';
+      break;
+    case 'stage':
+      estimatedCost = Math.round(decorBudgetTotal * 0.32);
+      materials = ['Stage riser cladding', 'Fabric drapes in theme silks', 'Central metallic/acrylic monogram', '4x warm LED pin spots'];
+      affordableAlternative = 'Use sheer fabric drop with warm fairy light curtains instead of sculpted multi-layer plywood sets (saves ~35%)';
+      break;
+    case 'seating':
+      estimatedCost = Math.round(decorBudgetTotal * 0.12);
+      materials = ['Banquet chair covers', 'Themed chiffon tie-backs', 'Aisle carpet runner', 'Lounge poufs'];
+      affordableAlternative = 'Rent standard Chiavari chairs without individual sash labor to reduce per-chair styling cost by 40%';
+      break;
+    case 'dining':
+      estimatedCost = Math.round(decorBudgetTotal * 0.14);
+      materials = ['Buffet table skirters', 'Warm food warmer lanterns', 'Printed chalkboard menu stands', 'Overhead botanical swag'];
+      affordableAlternative = 'Focus styling on front greeting counter; keep rear warming trays minimal (saves ~25%)';
+      break;
+    case 'tables':
+      estimatedCost = Math.round(decorBudgetTotal * 0.1);
+      materials = ['Clay/brass mini urns', 'Floating tea-light candles', 'Organza runners', 'Table number stands'];
+      affordableAlternative = 'Use potted succulents or miniature terrariums that double as guest party favors (saves 50%)';
+      break;
+    case 'lighting':
+      estimatedCost = Math.round(decorBudgetTotal * 0.15);
+      materials = ['100m fairy light web', 'Dimmer console', 'Par cans for architectural wash', 'Amber filament clusters'];
+      affordableAlternative = 'Prioritize strategic warm wall uplighting and central pendant over full ceiling coverage (saves ~30%)';
+      break;
+    case 'outdoor':
+      estimatedCost = Math.round(decorBudgetTotal * 0.1);
+      materials = ['Festoon string cable', 'Bamboo pathway stakes', 'Diyas / solar garden spikes', 'Rattan seating'];
+      affordableAlternative = 'Wrap existing trees with fairy lights instead of erecting freestanding poles (saves ~45%)';
+      break;
+    case 'complete_venue':
+    default:
+      estimatedCost = decorBudgetTotal;
+      materials = ['Complete coordinated design package', 'On-site execution team', 'Breakdown & waste management'];
+      affordableAlternative = 'Consolidate flower sourcing through a single local wholesale market coordinator';
+      break;
+  }
+
+  return {
+    id: `concept-${area}-${Date.now()}-${variationIndex}`,
+    area,
+    title: `${theme.title} — ${areaInfo.label} (Var ${variationIndex + 1})`,
+    description: `Tailored for ${eventType} celebration with ${guestCount} guests. Harmonizes with ${theme.palette.names.slice(0, 3).join(', ')} color language.`,
+    imageUrl,
+    prompt,
+    estimatedCost,
+    materials,
+    affordableAlternative,
+    isFavorite: false,
+    selectedForBudget: false,
+  };
+}
+
 export function generateAllDecorConcepts(options: GenerateDecorOptions): DecorConceptItem[] {
   const { eventType, theme, targetBudget, guestCount, customModifications } = options;
   const decorBudgetTotal = Math.round(targetBudget * 0.2); // ~20% decor allocation

@@ -17,12 +17,14 @@ import {
   DecorConceptItem,
   VenuePhoto,
   StructuredEventProposal,
+  TimelineEvent,
 } from '../types';
 import { StorageService } from '../services/storageService';
 import { calculateBudgetSummary, BudgetSummary } from '../services/budgetCalculator';
 import { generateOperationalAlerts } from '../services/alertEngine';
 import { validateGuestCheckIn, CheckInResult } from '../services/guestPassService';
 import { generateAllDecorConcepts } from '../services/imageGenService';
+import { getDefaultBudgetCategories, getDefaultEventSchedule } from '../services/eventDefaults';
 
 export interface EventContextType {
   // Multi-event State
@@ -79,6 +81,8 @@ export interface EventContextType {
   setIsCreateEventModalOpen: (open: boolean) => void;
   isEventSwitcherOpen: boolean;
   setIsEventSwitcherOpen: (open: boolean) => void;
+  isReportModalOpen: boolean;
+  setIsReportModalOpen: (open: boolean) => void;
   isMobileNavOpen: boolean;
   setIsMobileNavOpen: (open: boolean) => void;
 
@@ -99,10 +103,16 @@ export interface EventContextType {
   updateBudgetItem: (categoryId: BudgetCategoryId, itemId: string, updates: Partial<BudgetItem>) => void;
   addBudgetItem: (categoryId: BudgetCategoryId, item: Omit<BudgetItem, 'id'>) => void;
   deleteBudgetItem: (categoryId: BudgetCategoryId, itemId: string) => void;
+  addBudgetCategory: (name: string, targetPercent?: number) => void;
+  autoBalanceBudgetCategories: () => void;
   setActiveTheme: (themeId: string) => void;
   toggleTask: (taskId: string) => void;
   addTask: (task: Omit<Task, 'id'>) => void;
   deleteTask: (taskId: string) => void;
+  addScheduleMilestone: (milestone: Omit<TimelineEvent, 'id'>) => void;
+  updateScheduleMilestone: (id: string, updates: Partial<TimelineEvent>) => void;
+  deleteScheduleMilestone: (id: string) => void;
+  toggleScheduleMilestone: (id: string) => void;
   applyWhatIfScenario: (scenario: WhatIfScenario) => void;
   resetToDemoSeed: () => void;
 }
@@ -138,6 +148,7 @@ const INITIAL_CLEAN_EVENT: EventDetails = {
   },
   cateringPlateBuffer: 15,
   returnGiftBuffer: 10,
+  schedule: getDefaultEventSchedule('birthday'),
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
@@ -197,6 +208,7 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [isWhatIfModalOpen, setIsWhatIfModalOpen] = useState(false);
   const [isCreateEventModalOpen, setIsCreateEventModalOpen] = useState(false);
   const [isEventSwitcherOpen, setIsEventSwitcherOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [activeToast, setActiveToast] = useState<EventContextType['activeToast']>(null);
 
@@ -724,6 +736,26 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     showToast('Item removed from budget', 'warning');
   };
 
+  const addBudgetCategory = (name: string, targetPercent: number = 10) => {
+    const id = name.toLowerCase().replace(/[^a-z0-9]/g, '_') as BudgetCategoryId;
+    const newCat: BudgetCategory = {
+      id,
+      name,
+      iconName: 'Wallet',
+      color: '#C96F4A',
+      targetPercent,
+      items: [],
+    };
+    setBudgetCategories((prev) => [...prev, newCat]);
+    showToast(`Added custom category "${name}" to budget`);
+  };
+
+  const autoBalanceBudgetCategories = () => {
+    const defaults = getDefaultBudgetCategories(event.eventType, event.targetBudget, event.targetGuestCount);
+    setBudgetCategories(defaults);
+    showToast(`AI Auto-Balanced budget allocations tailored for ${event.eventType.toUpperCase()}!`);
+  };
+
   const setActiveTheme = (themeId: string) => {
     setEvent((prev) => ({
       ...prev,
@@ -760,6 +792,67 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const deleteTask = (taskId: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
     showToast('Task deleted', 'info');
+  };
+
+  const addScheduleMilestone = (milestoneData: Omit<TimelineEvent, 'id'>) => {
+    const newMilestone: TimelineEvent = {
+      ...milestoneData,
+      id: `sch-${Date.now()}`,
+    };
+    setEvent((prev) => {
+      const currentSchedule = prev.schedule && prev.schedule.length > 0
+        ? prev.schedule
+        : getDefaultEventSchedule(prev.eventType);
+      return {
+        ...prev,
+        schedule: [...currentSchedule, newMilestone],
+        updatedAt: new Date().toISOString(),
+      };
+    });
+    showToast(`Added schedule milestone: "${milestoneData.title}"`);
+  };
+
+  const updateScheduleMilestone = (id: string, updates: Partial<TimelineEvent>) => {
+    setEvent((prev) => {
+      const currentSchedule = prev.schedule && prev.schedule.length > 0
+        ? prev.schedule
+        : getDefaultEventSchedule(prev.eventType);
+      return {
+        ...prev,
+        schedule: currentSchedule.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+        updatedAt: new Date().toISOString(),
+      };
+    });
+    showToast('Updated schedule milestone');
+  };
+
+  const deleteScheduleMilestone = (id: string) => {
+    setEvent((prev) => {
+      const currentSchedule = prev.schedule && prev.schedule.length > 0
+        ? prev.schedule
+        : getDefaultEventSchedule(prev.eventType);
+      return {
+        ...prev,
+        schedule: currentSchedule.filter((item) => item.id !== id),
+        updatedAt: new Date().toISOString(),
+      };
+    });
+    showToast('Removed schedule milestone', 'info');
+  };
+
+  const toggleScheduleMilestone = (id: string) => {
+    setEvent((prev) => {
+      const currentSchedule = prev.schedule && prev.schedule.length > 0
+        ? prev.schedule
+        : getDefaultEventSchedule(prev.eventType);
+      return {
+        ...prev,
+        schedule: currentSchedule.map((item) =>
+          item.id === id ? { ...item, isCompleted: !item.isCompleted } : item
+        ),
+        updatedAt: new Date().toISOString(),
+      };
+    });
   };
 
   const applyWhatIfScenario = (scenario: WhatIfScenario) => {
@@ -891,6 +984,8 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setIsCreateEventModalOpen,
         isEventSwitcherOpen,
         setIsEventSwitcherOpen,
+        isReportModalOpen,
+        setIsReportModalOpen,
         isMobileNavOpen,
         setIsMobileNavOpen,
         activeToast,
@@ -907,10 +1002,16 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         updateBudgetItem,
         addBudgetItem,
         deleteBudgetItem,
+        addBudgetCategory,
+        autoBalanceBudgetCategories,
         setActiveTheme,
         toggleTask,
         addTask,
         deleteTask,
+        addScheduleMilestone,
+        updateScheduleMilestone,
+        deleteScheduleMilestone,
+        toggleScheduleMilestone,
         applyWhatIfScenario,
         resetToDemoSeed,
       }}

@@ -19,6 +19,7 @@ import {
   Heart,
   GraduationCap,
   Briefcase,
+  FileText,
 } from 'lucide-react';
 import { useEvent } from '../../context/EventContext';
 import { getEventTypeName } from '../../services/eventDefaults';
@@ -38,6 +39,7 @@ export const Header: React.FC = () => {
     setIsCreateEventModalOpen,
     setIsEventSwitcherOpen,
     setIsAISettingsOpen,
+    setIsReportModalOpen,
     isMobileNavOpen,
     setIsMobileNavOpen,
     loadSampleWedding,
@@ -151,6 +153,16 @@ export const Header: React.FC = () => {
             >
               <QrCode className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Pass Scanner</span>
+            </button>
+
+            {/* Printable Executive Dossier */}
+            <button
+              onClick={() => setIsReportModalOpen(true)}
+              className="p-1.5 sm:px-3 sm:py-1.5 rounded-full bg-white border border-[#EAE5E1] text-[#49372D] text-xs font-semibold hover:bg-[#FAF0EB] active:scale-95 transition-all inline-flex items-center gap-1.5 shadow-sm"
+              title="Printable Executive Event Dossier & Brief"
+            >
+              <FileText className="w-3.5 h-3.5 text-[#C96F4A]" />
+              <span className="hidden md:inline">Executive Dossier</span>
             </button>
 
             {/* AI Engine Settings Button */}

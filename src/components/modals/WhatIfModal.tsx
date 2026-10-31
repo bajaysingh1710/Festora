@@ -135,7 +135,7 @@ export const WhatIfModal: React.FC = () => {
         </div>
 
         {/* Interactive Simulation Sliders */}
-        <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-2xl bg-[#FAF0EB]/50 border border-[#F5D1BD]">
+        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 rounded-2xl bg-[#FAF0EB]/50 border border-[#F5D1BD]">
           {/* Guest Count Delta */}
           <div>
             <div className="flex items-center justify-between text-xs">
@@ -210,6 +210,28 @@ export const WhatIfModal: React.FC = () => {
               onChange={(e) => {
                 setSelectedPresetIndex(null);
                 setDeltaDecorPercent(Number(e.target.value));
+              }}
+              className="mt-2 w-full h-2 bg-[#F5D1BD] rounded-lg appearance-none cursor-pointer accent-[#C96F4A]"
+            />
+          </div>
+
+          {/* Target Budget Shift */}
+          <div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-[#49372D]">Target Budget Shift:</span>
+              <span className="font-mono font-bold text-[#C96F4A]">
+                {deltaBudgetPercent >= 0 ? `+${deltaBudgetPercent}%` : `${deltaBudgetPercent}%`} (₹{Math.round(m.targetBudget / 1000)}k)
+              </span>
+            </div>
+            <input
+              type="range"
+              min="-40"
+              max="40"
+              step="5"
+              value={deltaBudgetPercent}
+              onChange={(e) => {
+                setSelectedPresetIndex(null);
+                setDeltaBudgetPercent(Number(e.target.value));
               }}
               className="mt-2 w-full h-2 bg-[#F5D1BD] rounded-lg appearance-none cursor-pointer accent-[#C96F4A]"
             />

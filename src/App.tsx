@@ -14,6 +14,7 @@ import { CheckInScannerModal } from './components/modals/CheckInScannerModal';
 import { CreateEventModal } from './components/modals/CreateEventModal';
 import { EventSwitcherModal } from './components/modals/EventSwitcherModal';
 import { AISettingsModal } from './components/modals/AISettingsModal';
+import { EventReportModal } from './components/modals/EventReportModal';
 import { Sparkles, CheckCircle, AlertTriangle, Info, Heart } from 'lucide-react';
 
 const MainAppContent: React.FC = () => {
@@ -74,6 +75,7 @@ const MainAppContent: React.FC = () => {
       <CreateEventModal />
       <EventSwitcherModal />
       <AISettingsModal />
+      <EventReportModal />
 
       {/* Footer */}
       <footer className="mt-auto border-t border-[#F5D1BD]/70 bg-white/60 py-6 text-xs text-[#6E5548]">

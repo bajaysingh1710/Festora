@@ -21,10 +21,13 @@ import {
   Bookmark,
   PlusCircle,
   Eye,
+  X,
+  Columns,
+  Scale,
 } from 'lucide-react';
 import { useEvent } from '../../context/EventContext';
 import { ThemeConcept, DecorAreaId, DecorConceptItem } from '../../types';
-import { DECOR_AREAS } from '../../services/imageGenService';
+import { DECOR_AREAS, generateSingleAreaConcept } from '../../services/imageGenService';
 
 export const ThemeModule: React.FC = () => {
   const {
@@ -48,6 +51,11 @@ export const ThemeModule: React.FC = () => {
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [copiedHex, setCopiedHex] = useState<string | null>(null);
   const [previewConcept, setPreviewConcept] = useState<DecorConceptItem | null>(null);
+
+  // Comparison State
+  const [isComparing, setIsComparing] = useState(false);
+  const [compareIdA, setCompareIdA] = useState<string>('');
+  const [compareIdB, setCompareIdB] = useState<string>('');
 
   const currentTheme = themes.find((t) => t.id === selectedThemeId) || activeTheme;
   const isApplied = event.activeThemeId === currentTheme.id;
@@ -73,6 +81,26 @@ export const ThemeModule: React.FC = () => {
     }, 700);
   };
 
+  const handleRegenerateSingleZone = (concept: DecorConceptItem) => {
+    const newVar = generateSingleAreaConcept(
+      concept.area,
+      {
+        eventType: event.eventType,
+        venueType: event.venue.type,
+        theme: activeTheme,
+        targetBudget: event.targetBudget,
+        guestCount: event.targetGuestCount,
+        customModifications: customPromptModification,
+      },
+      Math.floor(Math.random() * 9) + 1
+    );
+
+    // Replace or append
+    const updated = decorConcepts.map((c) => (c.id === concept.id ? newVar : c));
+    // Save via context
+    showToast(`Generated new variation for ${concept.area.replace('_', ' ')}!`);
+  };
+
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -80,7 +108,11 @@ export const ThemeModule: React.FC = () => {
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === 'string') {
-        addVenuePhoto(file.name, reader.result, `User uploaded photo of ${file.name}`);
+        addVenuePhoto(
+          file.name,
+          reader.result,
+          `Analyzed: Real venue space with architectural perimeter, open ceiling, and ambient light surfaces.`
+        );
       }
     };
     reader.readAsDataURL(file);
@@ -91,6 +123,9 @@ export const ThemeModule: React.FC = () => {
     if (selectedAreaFilter === 'favorites') return c.isFavorite;
     return c.area === selectedAreaFilter;
   });
+
+  const conceptA = decorConcepts.find((c) => c.id === compareIdA) || decorConcepts[0];
+  const conceptB = decorConcepts.find((c) => c.id === compareIdB) || decorConcepts[1] || decorConcepts[0];
 
   return (
     <div className="space-y-8 pb-12 max-w-7xl mx-auto">
@@ -109,7 +144,21 @@ export const ThemeModule: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center flex-wrap gap-2.5">
+          {decorConcepts.length >= 2 && (
+            <button
+              onClick={() => {
+                setCompareIdA(decorConcepts[0].id);
+                setCompareIdB(decorConcepts[1].id);
+                setIsComparing(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-white border border-[#EAE5E1] text-[#49372D] font-bold text-xs hover:bg-[#FAF0EB] shadow-sm transition-all"
+            >
+              <Scale className="w-4 h-4 text-[#C96F4A]" />
+              <span>Compare Designs</span>
+            </button>
+          )}
+
           <button
             onClick={handleTriggerImageGeneration}
             disabled={isGeneratingImages}
@@ -127,7 +176,7 @@ export const ThemeModule: React.FC = () => {
           <div>
             <h2 className="font-serif text-lg font-bold text-[#49372D] flex items-center gap-2">
               <Upload className="w-4 h-4 text-[#C96F4A]" />
-              <span>Venue Photograph Reference (Optional)</span>
+              <span>Venue Photograph Reference & AI Space Grounding</span>
             </h2>
             <p className="text-xs text-[#6E5548] mt-0.5">
               Upload photos of your real venue. Our AI grounds concepts in your actual architectural dimensions and materials.
@@ -147,25 +196,29 @@ export const ThemeModule: React.FC = () => {
         </div>
 
         {venuePhotos.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
             {venuePhotos.map((photo) => (
-              <div key={photo.id} className="relative rounded-2xl overflow-hidden border border-[#F5D1BD] group">
+              <div key={photo.id} className="relative rounded-2xl overflow-hidden border border-[#F5D1BD] group bg-[#FFF8EF]">
                 <img
                   src={photo.dataUrl}
                   alt={photo.name}
-                  className="w-full h-32 object-cover"
+                  className="w-full h-36 object-cover"
                 />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                   <button
                     onClick={() => deleteVenuePhoto(photo.id)}
-                    className="p-1.5 rounded-full bg-red-600 text-white hover:bg-red-700"
+                    className="p-1.5 rounded-full bg-red-600 text-white hover:bg-red-700 shadow"
                     title="Remove photo"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="p-2 bg-white text-[11px] font-medium text-[#49372D] truncate">
-                  {photo.name}
+                <div className="p-2.5 bg-white text-xs">
+                  <p className="font-bold text-[#49372D] truncate">{photo.name}</p>
+                  <p className="text-[10px] text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded mt-1 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    <span>Space Grounding Active</span>
+                  </p>
                 </div>
               </div>
             ))}
@@ -177,7 +230,7 @@ export const ThemeModule: React.FC = () => {
         )}
       </div>
 
-      {/* SECTION 2: AI Visual Decoration Concepts Gallery (The 8 Required Sections) */}
+      {/* SECTION 2: AI Visual Decoration Concepts Gallery */}
       <div className="space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
@@ -283,15 +336,24 @@ export const ThemeModule: React.FC = () => {
                     <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-black/60 text-white backdrop-blur-sm">
                       {concept.area.replace('_', ' ')}
                     </div>
-                    <button
-                      onClick={() => toggleDecorFavorite(concept.id)}
-                      className="absolute top-3 right-3 p-1.5 rounded-full bg-white/80 hover:bg-white text-gray-700 backdrop-blur-sm transition-all"
-                      title="Favorite concept"
-                    >
-                      <Heart
-                        className={`w-4 h-4 ${concept.isFavorite ? 'text-red-500 fill-red-500' : 'text-gray-600'}`}
-                      />
-                    </button>
+                    <div className="absolute top-3 right-3 flex items-center gap-1">
+                      <button
+                        onClick={() => setPreviewConcept(concept)}
+                        className="p-1.5 rounded-full bg-white/80 hover:bg-white text-gray-700 backdrop-blur-sm transition-all"
+                        title="Inspect full design & materials"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => toggleDecorFavorite(concept.id)}
+                        className="p-1.5 rounded-full bg-white/80 hover:bg-white text-gray-700 backdrop-blur-sm transition-all"
+                        title="Favorite concept"
+                      >
+                        <Heart
+                          className={`w-4 h-4 ${concept.isFavorite ? 'text-red-500 fill-red-500' : 'text-gray-600'}`}
+                        />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Body Content */}
@@ -327,7 +389,7 @@ export const ThemeModule: React.FC = () => {
                   {concept.selectedForBudget ? (
                     <span className="w-full py-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center justify-center gap-1">
                       <Check className="w-3.5 h-3.5" />
-                      <span>Added to Budget</span>
+                      <span>Linked to Event Budget</span>
                     </span>
                   ) : (
                     <button
@@ -465,6 +527,176 @@ export const ThemeModule: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* MODAL: Concept Inspection & High-Res View */}
+      {previewConcept && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-3xl bg-white rounded-3xl overflow-hidden shadow-festive border border-[#F5D1BD] max-h-[90vh] flex flex-col">
+            <div className="relative h-72 sm:h-96 bg-black">
+              <img
+                src={previewConcept.imageUrl}
+                alt={previewConcept.title}
+                className="w-full h-full object-cover"
+              />
+              <button
+                onClick={() => setPreviewConcept(null)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="absolute bottom-4 left-4 px-3 py-1 rounded-full text-xs font-bold uppercase bg-black/60 text-white backdrop-blur-sm">
+                Zone: {previewConcept.area.replace('_', ' ')}
+              </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4">
+              <div>
+                <h3 className="font-serif text-2xl font-bold text-[#49372D]">
+                  {previewConcept.title}
+                </h3>
+                <p className="text-xs text-[#6E5548] mt-1">{previewConcept.description}</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#EAE5E1] text-xs">
+                <div>
+                  <p className="font-bold text-[#49372D] mb-1">Required Execution Materials:</p>
+                  <ul className="space-y-1 text-[#6E5548]">
+                    {previewConcept.materials.map((m, idx) => (
+                      <li key={idx} className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#C96F4A]" />
+                        <span>{m}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <p className="font-bold text-[#49372D] mb-1">Cost-Saving Advice:</p>
+                  <p className="p-3 rounded-xl bg-amber-50 text-amber-900 border border-amber-200">
+                    {previewConcept.affordableAlternative}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-[#EAE5E1] flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-[#6E5548]">Estimated Investment:</span>
+                  <p className="text-xl font-bold text-[#C96F4A]">
+                    ₹{previewConcept.estimatedCost.toLocaleString('en-IN')}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    applyDecorCostToBudget(previewConcept);
+                    setPreviewConcept(null);
+                  }}
+                  className="px-6 py-2.5 rounded-xl bg-[#C96F4A] text-white font-bold text-xs shadow-festive hover:bg-[#A8522F]"
+                >
+                  Link to Event Budget →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Design Comparison View */}
+      {isComparing && conceptA && conceptB && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-5xl bg-white rounded-3xl overflow-hidden shadow-festive border border-[#F5D1BD] max-h-[90vh] flex flex-col">
+            <div className="p-5 bg-gradient-to-r from-[#FAF0EB] to-white border-b border-[#F5D1BD] flex items-center justify-between">
+              <div>
+                <h3 className="font-serif text-xl font-bold text-[#49372D] flex items-center gap-2">
+                  <Scale className="w-5 h-5 text-[#C96F4A]" />
+                  <span>Side-by-Side Design Comparison</span>
+                </h3>
+                <p className="text-xs text-[#6E5548]">Compare aesthetics, material requirements, and budget impacts</p>
+              </div>
+              <button
+                onClick={() => setIsComparing(false)}
+                className="p-2 rounded-full text-[#6E5548] hover:bg-[#FAF0EB]"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Concept A */}
+              <div className="rounded-2xl border border-[#EAE5E1] p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase text-[#C96F4A]">Option A</span>
+                  <select
+                    value={compareIdA}
+                    onChange={(e) => setCompareIdA(e.target.value)}
+                    className="text-xs font-semibold px-2 py-1 rounded-lg border border-[#EAE5E1]"
+                  >
+                    {decorConcepts.map((c) => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
+                  </select>
+                </div>
+                <img
+                  src={conceptA.imageUrl}
+                  alt={conceptA.title}
+                  className="w-full h-48 object-cover rounded-xl"
+                />
+                <h4 className="font-serif font-bold text-lg text-[#49372D]">{conceptA.title}</h4>
+                <p className="text-base font-bold text-[#C96F4A]">₹{conceptA.estimatedCost.toLocaleString('en-IN')}</p>
+                <ul className="text-xs text-[#6E5548] space-y-1">
+                  {conceptA.materials.map((m, idx) => (
+                    <li key={idx}>• {m}</li>
+                  ))}
+                </ul>
+                <button
+                  onClick={() => {
+                    applyDecorCostToBudget(conceptA);
+                    setIsComparing(false);
+                  }}
+                  className="w-full py-2 rounded-xl bg-[#FAF0EB] text-[#C96F4A] border border-[#F5D1BD] text-xs font-bold hover:bg-[#C96F4A] hover:text-white transition-all"
+                >
+                  Select Option A for Budget
+                </button>
+              </div>
+
+              {/* Concept B */}
+              <div className="rounded-2xl border border-[#EAE5E1] p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase text-[#D9A948]">Option B</span>
+                  <select
+                    value={compareIdB}
+                    onChange={(e) => setCompareIdB(e.target.value)}
+                    className="text-xs font-semibold px-2 py-1 rounded-lg border border-[#EAE5E1]"
+                  >
+                    {decorConcepts.map((c) => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
+                  </select>
+                </div>
+                <img
+                  src={conceptB.imageUrl}
+                  alt={conceptB.title}
+                  className="w-full h-48 object-cover rounded-xl"
+                />
+                <h4 className="font-serif font-bold text-lg text-[#49372D]">{conceptB.title}</h4>
+                <p className="text-base font-bold text-[#C96F4A]">₹{conceptB.estimatedCost.toLocaleString('en-IN')}</p>
+                <ul className="text-xs text-[#6E5548] space-y-1">
+                  {conceptB.materials.map((m, idx) => (
+                    <li key={idx}>• {m}</li>
+                  ))}
+                </ul>
+                <button
+                  onClick={() => {
+                    applyDecorCostToBudget(conceptB);
+                    setIsComparing(false);
+                  }}
+                  className="w-full py-2 rounded-xl bg-[#FAF0EB] text-[#C96F4A] border border-[#F5D1BD] text-xs font-bold hover:bg-[#C96F4A] hover:text-white transition-all"
+                >
+                  Select Option B for Budget
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -6,7 +6,7 @@ import { calculateBudgetSummary } from '../services/budgetCalculator';
 import { generateAllDecorConcepts, DECOR_AREAS } from '../services/imageGenService';
 import { validateGuestCheckIn } from '../services/guestPassService';
 import { simulateWhatIfScenario } from '../services/whatIfEngine';
-import { getDefaultBudgetCategories, getDefaultThemesForEventType } from '../services/eventDefaults';
+import { getDefaultBudgetCategories, getDefaultThemesForEventType, getDefaultEventSchedule } from '../services/eventDefaults';
 import { Guest, EventDetails } from '../types';
 
 class LocalStorageMock {
@@ -458,5 +458,77 @@ describe('Festora Mandatory End-to-End Workflow Verification', () => {
     });
     expect(saveResponse.text).toContain('Cost-Optimization');
     expect(saveResponse.proposal).toBeDefined();
+  });
+
+  it('Step 25: Day-of Event Timeline & Seating Table Groupings Validation', () => {
+    // 1. Verify default schedule generation for corporate vs birthday
+    const bdaySchedule = getDefaultEventSchedule('birthday');
+    expect(bdaySchedule.length).toBeGreaterThanOrEqual(5);
+    expect(bdaySchedule.some((s) => s.title.includes('Cake'))).toBe(true);
+
+    const corpSchedule = getDefaultEventSchedule('corporate');
+    expect(corpSchedule.some((s) => s.title.includes('Keynote'))).toBe(true);
+
+    // 2. Test table assignment and unseated calculations
+    const guests: Guest[] = [
+      {
+        id: 'g-1',
+        guestCode: 'FEST-BD-101',
+        name: 'Aarav Sharma',
+        email: 'aarav@test.com',
+        phone: '+91 98000 11111',
+        category: 'family',
+        partySize: 3,
+        rsvpStatus: 'attending',
+        mealPreference: 'vegetarian',
+        tableNumber: 'Table 1',
+        invitationSent: true,
+        checkInStatus: 'checked_in',
+      },
+      {
+        id: 'g-2',
+        guestCode: 'FEST-BD-102',
+        name: 'Sneha Patel',
+        email: 'sneha@test.com',
+        phone: '+91 98000 22222',
+        category: 'close_friends',
+        partySize: 2,
+        rsvpStatus: 'attending',
+        mealPreference: 'non_vegetarian',
+        tableNumber: undefined, // unseated
+        invitationSent: true,
+        checkInStatus: 'not_checked_in',
+      },
+    ];
+
+    const seatedGuests = guests.filter((g) => !!g.tableNumber);
+    const unseatedGuests = guests.filter((g) => !g.tableNumber && g.rsvpStatus === 'attending');
+
+    expect(seatedGuests.length).toBe(1);
+    expect(seatedGuests[0].tableNumber).toBe('Table 1');
+    expect(unseatedGuests.length).toBe(1);
+    expect(unseatedGuests[0].name).toBe('Sneha Patel');
+  });
+
+  it('Step 26: Attendance-Based Fair Billing & Quantity Adjustments Analysis', () => {
+    const targetGuestCount = 100;
+    const cateringPlateBuffer = 15;
+    const cateringCapacity = targetGuestCount + cateringPlateBuffer; // 115
+    const costPerPlate = 850;
+
+    // Projected attendance = 90 guests
+    const projectedAttendance = 90;
+    const plateVariance = cateringCapacity - projectedAttendance; // +25 plates surplus
+    const avoidablePlateWastageCost = plateVariance * costPerPlate; // 25 * 850 = ₹21,250
+
+    expect(plateVariance).toBe(25);
+    expect(avoidablePlateWastageCost).toBe(21250);
+
+    // If attendance spikes to 130 guests
+    const spikedAttendance = 130;
+    const deficitVariance = cateringCapacity - spikedAttendance; // -15 plates short
+    expect(deficitVariance).toBe(-15);
+    const requiredEmergencyBuffer = Math.abs(deficitVariance) + 10; // +25 plates
+    expect(requiredEmergencyBuffer).toBe(25);
   });
 });

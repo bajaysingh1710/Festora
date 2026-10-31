@@ -5,6 +5,7 @@ import {
   ThemeConcept,
   Task,
   EventDetails,
+  TimelineEvent,
 } from '../types';
 
 export function getEventTypeName(type: EventType): string {
@@ -904,6 +905,50 @@ export function getDefaultTasksForEventType(eventType: EventType, eventDate: str
           priority: 'medium',
           isCompleted: false,
         },
+      ];
+  }
+}
+
+export function getDefaultEventSchedule(eventType: EventType): TimelineEvent[] {
+  switch (eventType) {
+    case 'birthday':
+      return [
+        { id: 'sch-1', time: '04:00 PM', title: 'Vendor Arrival & Sound Check', location: 'Main Hall', coordinator: 'Venue Manager', isCompleted: true },
+        { id: 'sch-2', time: '05:30 PM', title: 'Guest Arrival, Welcome Drinks & Photobooth', location: 'Foyer Entrance', coordinator: 'Host Squad', isCompleted: false },
+        { id: 'sch-3', time: '06:30 PM', title: 'Interactive Party Games & Magic Show', location: 'Activity Zone', coordinator: 'Emcee', isCompleted: false },
+        { id: 'sch-4', time: '07:30 PM', title: 'Grand Cake Cutting & Birthday Toast', location: 'Center Stage', coordinator: 'Parents & Host', isCompleted: false },
+        { id: 'sch-5', time: '08:00 PM', title: 'Gourmet Dinner Buffet Opens', location: 'Dining Pavilion', coordinator: 'Catering Lead', isCompleted: false },
+        { id: 'sch-6', time: '09:30 PM', title: 'Return Gift Distribution & Farewell', location: 'Exit Lounge', coordinator: 'Coordinator', isCompleted: false },
+      ];
+    case 'corporate':
+      return [
+        { id: 'sch-1', time: '08:30 AM', title: 'Delegate Registration & Breakfast Networking', location: 'Lobby', coordinator: 'Registration Desk', isCompleted: true },
+        { id: 'sch-2', time: '09:30 AM', title: 'Keynote Address & Opening Remarks', location: 'Main Auditorium', coordinator: 'Program Chair', isCompleted: false },
+        { id: 'sch-3', time: '11:00 AM', title: 'Executive Panel Discussion & Q&A', location: 'Main Auditorium', coordinator: 'Moderator', isCompleted: false },
+        { id: 'sch-4', time: '01:00 PM', title: 'Business Lunch & Networking Break', location: 'Dining Hall', coordinator: 'Hospitality Lead', isCompleted: false },
+        { id: 'sch-5', time: '02:30 PM', title: 'Breakout Workshops & Innovation Tracks', location: 'Conference Rooms A & B', coordinator: 'Track Leads', isCompleted: false },
+        { id: 'sch-6', time: '04:30 PM', title: 'Closing Ceremonies & Delegate Hampers', location: 'Main Auditorium', coordinator: 'Organizing Committee', isCompleted: false },
+      ];
+    case 'college':
+      return [
+        { id: 'sch-1', time: '09:00 AM', title: 'Campus Gate Security & QR Pass Verification', location: 'Gate 1 & Gate 2', coordinator: 'Security Team', isCompleted: true },
+        { id: 'sch-2', time: '10:30 AM', title: 'Inauguration & Battle of the Bands Prelims', location: 'Open Air Theatre', coordinator: 'Cultural Secretary', isCompleted: false },
+        { id: 'sch-3', time: '01:00 PM', title: 'Food Truck Alley & Carnival Stalls', location: 'Quadrangle', coordinator: 'Student Council', isCompleted: false },
+        { id: 'sch-4', time: '03:30 PM', title: 'Inter-College Choreography Showcase', location: 'Auditorium', coordinator: 'Stage Lead', isCompleted: false },
+        { id: 'sch-5', time: '06:00 PM', title: 'Celebrity Pro-Night / Live Concert', location: 'Stadium Ground', coordinator: 'Core Fest Team', isCompleted: false },
+        { id: 'sch-6', time: '09:30 PM', title: 'Dispersal & Crowd Control Clearance', location: 'All Exits', coordinator: 'Safety Marshals', isCompleted: false },
+      ];
+    case 'wedding':
+    case 'engagement':
+    case 'anniversary':
+    default:
+      return [
+        { id: 'sch-1', time: '09:00 AM', title: 'Mandap / Stage Floral Rigging & Decor Prep', location: 'Ceremony Stage', coordinator: 'Florist Lead', isCompleted: true },
+        { id: 'sch-2', time: '11:00 AM', title: 'Guest Welcome, Shehnai / Live Strings & Refreshments', location: 'Grand Entrance', coordinator: 'Family Welcoming Team', isCompleted: false },
+        { id: 'sch-3', time: '12:00 PM', title: 'Main Auspicious Ceremony & Ring Exchange', location: 'Sacred Mandap', coordinator: 'Ceremony Director', isCompleted: false },
+        { id: 'sch-4', time: '01:30 PM', title: 'Royal Wedding Feast & Live Counters', location: 'Dining Pavilion', coordinator: 'Catering Lead', isCompleted: false },
+        { id: 'sch-5', time: '03:30 PM', title: 'Family Blessings, Portrait Sessions & Group Photos', location: 'Photobooth & Stage', coordinator: 'Lead Photographer', isCompleted: false },
+        { id: 'sch-6', time: '05:00 PM', title: 'Sweets & Keepsake Return Favor Handover', location: 'Exit Canopy', coordinator: 'Hospitality Lead', isCompleted: false },
       ];
   }
 }

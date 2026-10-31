@@ -12,7 +12,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { useEvent } from '../../context/EventContext';
-import { CheckInResult } from '../../services/guestPassService';
+import { CheckInResult, validateGuestCheckOut } from '../../services/guestPassService';
 
 export const CheckInScannerModal: React.FC = () => {
   const {
@@ -20,8 +20,10 @@ export const CheckInScannerModal: React.FC = () => {
     isCheckInScannerOpen,
     setIsCheckInScannerOpen,
     checkInGuestByCode,
+    showToast,
   } = useEvent();
 
+  const [scanMode, setScanMode] = useState<'check_in' | 'check_out'>('check_in');
   const [inputCode, setInputCode] = useState('');
   const [operatorName, setOperatorName] = useState('Front Desk - Gate 1');
   const [lastResult, setLastResult] = useState<CheckInResult | null>(null);
@@ -32,16 +34,30 @@ export const CheckInScannerModal: React.FC = () => {
     e.preventDefault();
     if (!inputCode.trim()) return;
 
-    const result = checkInGuestByCode(inputCode.trim(), operatorName);
-    setLastResult(result);
-    if (result.success) {
-      setInputCode('');
+    if (scanMode === 'check_in') {
+      const result = checkInGuestByCode(inputCode.trim(), operatorName);
+      setLastResult(result);
+      if (result.success) {
+        setInputCode('');
+      }
+    } else {
+      const result = validateGuestCheckOut(inputCode.trim(), guests, operatorName);
+      setLastResult(result);
+      if (result.success) {
+        setInputCode('');
+        showToast(`Exit recorded for ${result.guest?.name}`);
+      }
     }
   };
 
   const handleQuickAdmit = (guestCode: string) => {
-    const result = checkInGuestByCode(guestCode, operatorName);
-    setLastResult(result);
+    if (scanMode === 'check_in') {
+      const result = checkInGuestByCode(guestCode, operatorName);
+      setLastResult(result);
+    } else {
+      const result = validateGuestCheckOut(guestCode, guests, operatorName);
+      setLastResult(result);
+    }
   };
 
   // Recent checked in guests list
@@ -81,19 +97,52 @@ export const CheckInScannerModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Operator Badge & Scanner Input Form */}
+        {/* Operator Badge & Mode Selector */}
         <div className="mt-5 space-y-4">
-          <div className="flex items-center justify-between text-xs text-[#6E5548]">
-            <span className="flex items-center gap-1 font-medium">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#C96F4A]" />
-              <span>Operator Terminal:</span>
-            </span>
-            <input
-              type="text"
-              value={operatorName}
-              onChange={(e) => setOperatorName(e.target.value)}
-              className="px-2.5 py-0.5 rounded border border-[#EAE5E1] text-xs font-semibold text-[#49372D] focus:outline-none"
-            />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-[#6E5548]">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 font-medium">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#C96F4A]" />
+                <span>Operator:</span>
+              </span>
+              <input
+                type="text"
+                value={operatorName}
+                onChange={(e) => setOperatorName(e.target.value)}
+                className="px-2.5 py-0.5 rounded border border-[#EAE5E1] text-xs font-semibold text-[#49372D] focus:outline-none"
+              />
+            </div>
+
+            <div className="inline-flex rounded-xl p-0.5 bg-[#FAF0EB] border border-[#F5D1BD]">
+              <button
+                type="button"
+                onClick={() => {
+                  setScanMode('check_in');
+                  setLastResult(null);
+                }}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                  scanMode === 'check_in'
+                    ? 'bg-[#C96F4A] text-white shadow-sm'
+                    : 'text-[#6E5548] hover:text-[#49372D]'
+                }`}
+              >
+                Entry Check-In
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setScanMode('check_out');
+                  setLastResult(null);
+                }}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                  scanMode === 'check_out'
+                    ? 'bg-[#49372D] text-white shadow-sm'
+                    : 'text-[#6E5548] hover:text-[#49372D]'
+                }`}
+              >
+                Exit Verification
+              </button>
+            </div>
           </div>
 
           <form onSubmit={handleScanSubmit} className="flex gap-2">

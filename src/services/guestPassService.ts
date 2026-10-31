@@ -159,3 +159,68 @@ export function validateGuestCheckIn(
     message: `🎉 Check-in verified! Welcome ${guest.name} (Party of ${guest.partySize}). Table: ${guest.tableNumber || 'Open Seating'}.`,
   };
 }
+
+/**
+ * Records a guest check-out attempt for event exit verification
+ */
+export function validateGuestCheckOut(
+  query: string,
+  guests: Guest[],
+  operatorName: string = 'Exit Gate 1'
+): CheckInResult {
+  const cleanQuery = query.trim().toUpperCase();
+
+  if (!cleanQuery) {
+    return {
+      success: false,
+      status: 'invalid',
+      message: 'Please enter a valid guest pass code, phone number, or scan QR code.',
+    };
+  }
+
+  let targetCode = cleanQuery;
+  try {
+    if (cleanQuery.startsWith('{') && cleanQuery.endsWith('}')) {
+      const parsed = JSON.parse(cleanQuery);
+      if (parsed.code) targetCode = parsed.code.toUpperCase();
+    }
+  } catch {
+    // Keep raw
+  }
+
+  const guest = guests.find((g) => {
+    return (
+      g.guestCode.toUpperCase() === targetCode ||
+      g.id.toUpperCase() === targetCode ||
+      g.phone.replace(/\D/g, '').includes(cleanQuery.replace(/\D/g, '')) ||
+      g.name.toUpperCase().includes(cleanQuery)
+    );
+  });
+
+  if (!guest) {
+    return {
+      success: false,
+      status: 'invalid',
+      message: `No matching guest found for "${query}".`,
+    };
+  }
+
+  if (guest.checkInStatus !== 'checked_in') {
+    return {
+      success: false,
+      status: 'invalid',
+      guest,
+      message: `${guest.name} has not checked in yet. Cannot record exit.`,
+    };
+  }
+
+  const now = new Date().toISOString();
+  return {
+    success: true,
+    status: 'valid',
+    guest,
+    checkInTime: now,
+    operator: operatorName,
+    message: `👋 Check-out confirmed for ${guest.name} (Party of ${guest.partySize}). Return gift delivered. Safe travels!`,
+  };
+}

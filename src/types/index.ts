@@ -55,8 +55,19 @@ export interface EventDetails {
   };
   cateringPlateBuffer: number; // e.g. 15 extra buffer plates
   returnGiftBuffer: number;    // e.g. 10 extra gifts
+  schedule?: TimelineEvent[];  // Day-of timeline milestones
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TimelineEvent {
+  id: string;
+  time: string; // e.g. "10:00 AM" or "14:30"
+  title: string;
+  description?: string;
+  location?: string;
+  coordinator?: string;
+  isCompleted?: boolean;
 }
 
 export interface Guest {

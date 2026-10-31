@@ -34,13 +34,21 @@ export const BudgetModule: React.FC = () => {
     updateBudgetItem,
     addBudgetItem,
     deleteBudgetItem,
+    addBudgetCategory,
+    autoBalanceBudgetCategories,
     setIsWhatIfModalOpen,
+    showToast,
   } = useEvent();
 
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('all');
   const [editingItem, setEditingItem] = useState<{ categoryId: BudgetCategoryId; item: BudgetItem } | null>(null);
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [addCategoryId, setAddCategoryId] = useState<BudgetCategoryId>('catering');
+
+  // Custom Category Modal State
+  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryPercent, setNewCategoryPercent] = useState(10);
 
   // New Item State
   const [newItemName, setNewItemName] = useState('');
@@ -50,6 +58,23 @@ export const BudgetModule: React.FC = () => {
   const [newItemIsGuestDependent, setNewItemIsGuestDependent] = useState(false);
   const [newItemGuestMultiplier, setNewItemGuestMultiplier] = useState<number>(1.0);
   const [newItemCommitted, setNewItemCommitted] = useState<number>(0);
+
+  // Fixed vs Variable (Guest-Dependent) Breakdown
+  const { fixedTotal, variableTotal } = React.useMemo(() => {
+    let fixed = 0;
+    let variable = 0;
+    budgetCategories.forEach((cat) => {
+      cat.items.forEach((item) => {
+        const { estimatedTotal } = calculateItemCost(item, event.targetGuestCount, event.venue.type);
+        if (item.isGuestDependent) {
+          variable += estimatedTotal;
+        } else {
+          fixed += estimatedTotal;
+        }
+      });
+    });
+    return { fixedTotal: fixed, variableTotal: variable };
+  }, [budgetCategories, event.targetGuestCount, event.venue.type]);
 
   const getCategoryIcon = (id: BudgetCategoryId) => {
     switch (id) {
@@ -137,21 +162,38 @@ export const BudgetModule: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center flex-wrap gap-2">
           <button
-            onClick={() => setIsWhatIfModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#C96F4A] to-[#A8522F] text-white font-semibold text-sm shadow-festive hover:brightness-105 active:scale-95 transition-all"
+            onClick={autoBalanceBudgetCategories}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#FAF0EB] border border-[#F5D1BD] text-[#C96F4A] font-bold text-xs hover:bg-[#F5D1BD]/50 active:scale-95 transition-all shadow-sm"
+            title="Automatically rebalance target category shares based on event type"
           >
-            <Sliders className="w-4 h-4" />
-            <span>Simulate Alternative Budgets</span>
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>AI Auto-Balance</span>
+          </button>
+
+          <button
+            onClick={() => setIsAddCategoryOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#EAE5E1] text-[#49372D] font-bold text-xs hover:bg-[#FAF0EB] active:scale-95 transition-all shadow-sm"
+          >
+            <Plus className="w-3.5 h-3.5 text-[#C96F4A]" />
+            <span>Add Category</span>
           </button>
 
           <button
             onClick={() => setIsAddItemOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-[#EAE5E1] text-[#49372D] font-semibold text-sm hover:bg-[#FAF0EB] active:scale-95 transition-all shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#EAE5E1] text-[#49372D] font-bold text-xs hover:bg-[#FAF0EB] active:scale-95 transition-all shadow-sm"
           >
-            <Plus className="w-4 h-4 text-[#C96F4A]" />
+            <Plus className="w-3.5 h-3.5 text-[#C96F4A]" />
             <span>Add Expense</span>
+          </button>
+
+          <button
+            onClick={() => setIsWhatIfModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#C96F4A] to-[#A8522F] text-white font-bold text-xs shadow-festive hover:brightness-105 active:scale-95 transition-all"
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>What-If Sandbox</span>
           </button>
         </div>
       </div>
@@ -246,6 +288,72 @@ export const BudgetModule: React.FC = () => {
               ? 'Trim guest count or decor to rebalance'
               : 'Surplus available for contingency or upgrades'}
           </p>
+        </div>
+      </div>
+
+      {/* Fixed vs Variable & Emergency Buffer Card */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Fixed vs Guest-Dependent Variable */}
+        <div className="rounded-2xl bg-white p-5 border border-[#EAE5E1] shadow-card flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#6E5548]">
+                Cost Structure: Fixed vs. Variable
+              </span>
+              <span className="text-xs font-semibold text-[#C96F4A]">
+                ≈ ₹{Math.round(variableTotal / Math.max(1, event.targetGuestCount)).toLocaleString('en-IN')}/guest
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="p-3 rounded-xl bg-[#FFF8EF] border border-[#F5D1BD]">
+                <p className="text-[11px] text-[#6E5548] font-semibold">Fixed Costs (Venue, Photo, Audio)</p>
+                <p className="font-serif text-lg font-bold text-[#49372D] mt-0.5">₹{fixedTotal.toLocaleString('en-IN')}</p>
+                <p className="text-[10px] text-[#6E5548]">{((fixedTotal / Math.max(1, budgetSummary.totalEstimated)) * 100).toFixed(0)}% of total</p>
+              </div>
+              <div className="p-3 rounded-xl bg-[#FAF0EB] border border-[#F5D1BD]">
+                <p className="text-[11px] text-[#C96F4A] font-semibold">Variable Costs (Buffet, Gifts)</p>
+                <p className="font-serif text-lg font-bold text-[#C96F4A] mt-0.5">₹{variableTotal.toLocaleString('en-IN')}</p>
+                <p className="text-[10px] text-[#C96F4A]">{((variableTotal / Math.max(1, budgetSummary.totalEstimated)) * 100).toFixed(0)}% of total</p>
+              </div>
+            </div>
+          </div>
+          <p className="text-[11px] text-[#6E5548] mt-3">
+            Fixed costs remain stable regardless of attendance, while variable costs scale with each arriving guest.
+          </p>
+        </div>
+
+        {/* Emergency Contingency Buffer */}
+        <div className="rounded-2xl bg-white p-5 border border-[#EAE5E1] shadow-card flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#6E5548] flex items-center gap-1.5">
+                <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                <span>Emergency Buffer Reserve</span>
+              </span>
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                Recommended 8%
+              </span>
+            </div>
+            <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80">
+              <div className="flex items-baseline justify-between">
+                <span className="font-serif text-lg font-bold text-amber-900">
+                  ₹{Math.round(event.targetBudget * 0.08).toLocaleString('en-IN')}
+                </span>
+                <span className="text-xs text-amber-800 font-semibold">
+                  {budgetSummary.isOverBudget ? '⚠️ Buffer Absorbed by Deficit' : '✅ Buffer Fully Intact'}
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-900 mt-1">
+                Safeguards your celebration against unexpected guest party expansions, overtime sound fees, or weather canopies.
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs">
+            <span className="text-[#6E5548]">Surplus Safety Margin:</span>
+            <span className="font-bold text-[#49372D]">
+              {budgetSummary.isOverBudget ? 'None (Overrun)' : `₹${budgetSummary.remainingBudget.toLocaleString('en-IN')} available`}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -579,6 +687,69 @@ export const BudgetModule: React.FC = () => {
                   className="px-5 py-2 rounded-xl bg-[#C96F4A] text-white font-semibold shadow-festive hover:bg-[#A8522F]"
                 >
                   Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Custom Category Modal */}
+      {isAddCategoryOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-festive-lg border border-[#F5D1BD]">
+            <h2 className="font-serif text-xl font-bold text-[#49372D] mb-4">Create Custom Category</h2>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newCategoryName.trim()) return;
+                addBudgetCategory(newCategoryName.trim(), Number(newCategoryPercent));
+                setNewCategoryName('');
+                setIsAddCategoryOpen(false);
+              }}
+              className="space-y-4 text-sm text-[#49372D]"
+            >
+              <div>
+                <label className="block text-xs font-semibold text-[#6E5548] uppercase mb-1">
+                  Category Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="e.g. Celebrity Artist & Performance"
+                  className="w-full px-3 py-2 rounded-xl border border-[#EAE5E1] focus:outline-none focus:border-[#C96F4A]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#6E5548] uppercase mb-1">
+                  Target Allocation (% of Budget)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={newCategoryPercent}
+                  onChange={(e) => setNewCategoryPercent(Number(e.target.value))}
+                  className="w-full px-3 py-2 rounded-xl border border-[#EAE5E1] focus:outline-none focus:border-[#C96F4A]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#EAE5E1]">
+                <button
+                  type="button"
+                  onClick={() => setIsAddCategoryOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-[#EAE5E1] text-[#6E5548] font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-[#C96F4A] text-white font-semibold shadow-festive hover:bg-[#A8522F]"
+                >
+                  Create Category
                 </button>
               </div>
             </form>
